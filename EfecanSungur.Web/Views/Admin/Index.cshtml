@@ -1,0 +1,230 @@
+@model SiteContent
+@inject IContentService ContentService
+@{
+    ViewData["Title"] = "Panel";
+    var unread = Model.Messages.Count(m => !m.IsRead);
+    var totalItems = Model.Nav.Count + Model.Stats.Count + Model.Expertise.Count + Model.Timeline.Count
+                     + Model.Quotes.Count + Model.Gallery.Count + Model.Socials.Count + Model.Faq.Count
+                     + Model.About.Facts.Count;
+    var recent = Model.Messages.Take(5).ToList();
+}
+
+@* Kayıt sorunu uyarısı _AdminLayout'ta (her panel sayfasında) basılır. *@
+
+<div class="ph">
+    <div>
+        <span class="ph__eyebrow">Yönetim</span>
+        <h1>Merhaba @Model.Settings.OwnerName</h1>
+        <p>Sitenin bütün içeriği buradan yönetilir. Soldaki menüden bir bölüm seçin ya da aşağıdaki kısayolları kullanın.</p>
+    </div>
+    <div class="ph__actions">
+        <a class="b b--ghost" href="/" target="_blank" rel="noopener">
+            @Icons.Svg("external", "icon", 17) <span>Siteyi aç</span>
+        </a>
+        <a class="b b--primary" href="/admin/bolum/hero">
+            @Icons.Svg("edit", "icon", 17) <span>Ana sayfayı düzenle</span>
+        </a>
+    </div>
+</div>
+
+<div class="kpis">
+    <a class="kpi" href="/admin/mesajlar">
+        <div class="kpi__icon">@Icons.Svg("inbox", "icon", 19)</div>
+        <div class="kpi__value">@Model.Messages.Count</div>
+        <div class="kpi__label">Gelen mesaj@(unread > 0 ? $" · {unread} yeni" : "")</div>
+    </a>
+    <div class="kpi">
+        <div class="kpi__icon">@Icons.Svg("list", "icon", 19)</div>
+        <div class="kpi__value">@totalItems</div>
+        <div class="kpi__label">İçerik öğesi</div>
+    </div>
+    <a class="kpi" href="/admin/liste/referanslar">
+        <div class="kpi__icon">@Icons.Svg("layers", "icon", 19)</div>
+        <div class="kpi__value">@Model.References.Count</div>
+        <div class="kpi__label">Referans projesi</div>
+    </a>
+    <a class="kpi" href="/admin/bolum/tema">
+        <div class="kpi__icon">@Icons.Svg("palette", "icon", 19)</div>
+        <div class="kpi__value" style="font-size:1.15rem;font-family:var(--font-mono);font-weight:500;letter-spacing:.02em;color:var(--signal)">@Model.Theme.Signal</div>
+        <div class="kpi__label">Vurgu rengi (sinyal)</div>
+    </a>
+</div>
+
+<div class="grid2">
+    <div class="stack">
+        <!-- ---------------------------------------------------- kısayollar -->
+        <section class="panel">
+            <div class="panel__head">
+                <div>
+                    <h2>Sayfa içerikleri</h2>
+                    <p>Tekil bölümler — metin, görsel ve ayarlar.</p>
+                </div>
+            </div>
+            <div class="panel__body">
+                <div class="tiles">
+                    @foreach (var sec in ContentSchema.Sections)
+                    {
+                        <a class="tile" href="/admin/bolum/@sec.Key">
+                            <span class="tile__icon">@Icons.Svg(sec.Icon, "icon", 18)</span>
+                            <span>@sec.Title</span>
+                            @Icons.Svg("chevron", "icon", 16)
+                        </a>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__head">
+                <div>
+                    <h2>Listeler</h2>
+                    <p>Ekleyebileceğiniz, sıralayabileceğiniz ve silebileceğiniz içerikler.</p>
+                </div>
+            </div>
+            <div class="panel__body">
+                <div class="tiles">
+                    @foreach (var collection in ContentSchema.Collections)
+                    {
+                        <a class="tile" href="/admin/liste/@collection.Key">
+                            <span class="tile__icon">@Icons.Svg(collection.Icon, "icon", 18)</span>
+                            <span>@collection.Title</span>
+                            <b>@collection.Target(Model).Count</b>
+                        </a>
+                    }
+                </div>
+            </div>
+        </section>
+
+        <!-- ------------------------------------------------------- mesajlar -->
+        <section class="panel">
+            <div class="panel__head">
+                <div>
+                    <h2>Son mesajlar</h2>
+                    <p>İletişim formundan gelenler.</p>
+                </div>
+                <a class="b b--ghost b--sm" href="/admin/mesajlar">Tümü @Icons.Svg("arrow", "icon", 15)</a>
+            </div>
+
+            @if (!recent.Any())
+            {
+                <div class="empty">
+                    <div class="empty__icon">@Icons.Svg("inbox", "icon", 24)</div>
+                    <h3>Henüz mesaj yok</h3>
+                    <p>İletişim formundan bir mesaj geldiğinde burada listelenecek.</p>
+                </div>
+            }
+            else
+            {
+                <div class="tablewrap">
+                    <table class="t">
+                        <thead>
+                            <tr>
+                                <th>Gönderen</th>
+                                <th>Konu</th>
+                                <th>Tarih</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var m in recent)
+                            {
+                                <tr>
+                                    <td data-label="Gönderen">
+                                        <span class="strong">@m.Name</span><br />
+                                        <span class="hint">@m.Email</span>
+                                    </td>
+                                    <td data-label="Konu"><span class="trunc">@m.Subject</span></td>
+                                    <td data-label="Tarih"><span class="hint">@m.CreatedAtDisplay</span></td>
+                                    <td data-label="Durum">
+                                        @if (!m.IsRead)
+                                        {
+                                            <span class="pill pill--new">Yeni</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="pill pill--off">Okundu</span>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </section>
+    </div>
+
+    <!-- --------------------------------------------------------- sistem -->
+    <div class="stack">
+        <section class="panel">
+            <div class="panel__head">
+                <div>
+                    <h2>Yedekleme</h2>
+                    <p>Tüm içerik tek bir JSON dosyasında tutulur.</p>
+                </div>
+            </div>
+            <div class="panel__body stack">
+                <a class="b b--ghost b--block" href="/admin/yedek">
+                    @Icons.Svg("download", "icon", 17) <span>Yedek indir (.json)</span>
+                </a>
+
+                <form method="post" action="/admin/geri-yukle" enctype="multipart/form-data"
+                      data-confirm="Yedek geri yüklenecek ve mevcut içerik değişecek. Onaylıyor musunuz?">
+                    @Html.AntiForgeryToken()
+                    <div class="f">
+                        <label for="dosya">Yedekten geri yükle</label>
+                        <input type="file" id="dosya" name="dosya" accept="application/json,.json" required
+                               style="font-size:13px;padding:9px" />
+                    </div>
+                    <button class="b b--ghost b--block" type="submit" style="margin-top:10px">
+                        @Icons.Svg("upload", "icon", 17) <span>Geri yükle</span>
+                    </button>
+                </form>
+
+                <p class="hint">
+                    Dosya konumu: <code>App_Data/content.json</code>. Her kayıtta otomatik <code>.bak</code> kopyası alınır.
+                </p>
+            </div>
+        </section>
+
+        <section class="panel danger-zone">
+            <div class="panel__head">
+                <div>
+                    <h2>Fabrika ayarları</h2>
+                    <p>Tüm içerik başlangıç hâline döner, gelen mesajlar korunur.</p>
+                </div>
+            </div>
+            <div class="panel__body">
+                <form method="post" action="/admin/sifirla"
+                      data-confirm="TÜM içerik başlangıç hâline dönecek. Bu işlem geri alınamaz. Emin misiniz?">
+                    @Html.AntiForgeryToken()
+                    <button class="b b--danger b--block" type="submit">
+                        @Icons.Svg("refresh", "icon", 17) <span>İçeriği sıfırla</span>
+                    </button>
+                </form>
+                <p class="hint" style="margin-top:12px">Önce yedek indirmenizi öneririm.</p>
+            </div>
+        </section>
+
+        <section class="panel">
+            <div class="panel__head"><div><h2>Hızlı bilgi</h2></div></div>
+            <div class="panel__body stack">
+                <div class="row" style="justify-content:space-between">
+                    <span class="hint">Kullanıcı</span><strong>efecan</strong>
+                </div>
+                <div class="row" style="justify-content:space-between">
+                    <span class="hint">Telefon</span><strong>@Model.Contact.PhoneDisplay</strong>
+                </div>
+                <div class="row" style="justify-content:space-between">
+                    <span class="hint">E-posta</span><strong style="font-size:13px">@Model.Contact.Email</strong>
+                </div>
+                <div class="row" style="justify-content:space-between">
+                    <span class="hint">WhatsApp</span><strong>@Model.Contact.WhatsAppNumber</strong>
+                </div>
+                <a class="b b--ghost b--block" href="/admin/bolum/iletisim" style="margin-top:4px">
+                    @Icons.Svg("edit", "icon", 16) <span>İletişim bilgilerini düzenle</span>
+                </a>
+            </div>
+        </section>
+    </div>
+</div>

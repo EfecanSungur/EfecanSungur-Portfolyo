@@ -1,0 +1,11 @@
+@model SiteContent
+@*
+    Sayfa başına TEK bir JSON-LD @graph: Person (Efecan Sungur) + Organization (Salurian)
+    + WebSite + sayfaya özel düğümler + BreadcrumbList. Grafik Services/JsonLd.cs'te
+    kurulur; denetleyicilerin verdiği ViewData'yı (PageType, Canonical, Title,
+    Description, Breadcrumbs, Reference) okur.
+
+    Razor, attribute içindeki + işaretini &#x2B; olarak kodlar ve "application/ld+json"
+    bozulur — bu yüzden etiket Html.Raw ile basılıyor. JSON içindeki her "<" <'dir.
+*@
+@Html.Raw(EfecanSungur.Web.Services.JsonLd.Script(Model, ViewData, Context.Request))

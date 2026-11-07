@@ -1,0 +1,29 @@
+@model List<BreadcrumbItem>
+@{
+    // Görünür içerik haritası. Denetleyici ViewData["Breadcrumbs"] verdiyse o
+    // kullanılır (JSON-LD BreadcrumbList ile aynı liste); vermediyse sayfanın
+    // kendi gönderdiği yedek liste.
+    var list = ViewData["Breadcrumbs"] as List<BreadcrumbItem> ?? Model ?? new List<BreadcrumbItem>();
+}
+@if (list.Count > 1)
+{
+    <nav class="crumbs" aria-label="Sayfa konumu">
+        <ol>
+            @for (var i = 0; i < list.Count; i++)
+            {
+                var c = list[i];
+                var last = i == list.Count - 1;
+                <li>
+                    @if (last)
+                    {
+                        <span aria-current="page">@c.Name</span>
+                    }
+                    else
+                    {
+                        <a href="@c.Url">@c.Name</a>
+                    }
+                </li>
+            }
+        </ol>
+    </nav>
+}

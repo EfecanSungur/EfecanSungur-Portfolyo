@@ -1,0 +1,18 @@
+@model SiteSettings
+@{
+    var one = string.IsNullOrWhiteSpace(Model.LogoLetterOne) ? "E" : Model.LogoLetterOne.Trim();
+    var two = string.IsNullOrWhiteSpace(Model.LogoLetterTwo) ? "S" : Model.LogoLetterTwo.Trim();
+    var variant = ViewData["LogoVariant"] as string ?? "mark";
+    var label = $"{one}{two} — {Model.SiteName}";
+}
+
+@* ES monogramı — sadece harfler: sol harf dolu, sağ harf kontur, altında ince
+   "sinyal" çizgisi. Yazı tipi --font-display (Inter Tight), renk currentColor;
+   çizgi rengi --rule. text-anchor="middle" sayesinde harf/font değişse de kutuda
+   kendini ortalar. Kutu 96×72 (4:3); CSS'teki .mono--* ölçüleri bu oranı korur. *@
+<svg class="mono mono--@variant" viewBox="0 0 96 72" role="img" aria-label="@label">
+    <text class="mono__word" x="48" y="54" text-anchor="middle">
+        <tspan class="mono__e">@one</tspan><tspan class="mono__s">@two</tspan>
+    </text>
+    <path class="mono__rule" d="M6 65 H90" />
+</svg>

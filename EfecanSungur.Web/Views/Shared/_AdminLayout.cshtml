@@ -1,0 +1,114 @@
+@inject IContentService ContentService
+@{
+    var site = ContentService.Get();
+    var s = site.Settings;
+    var t = site.Theme;
+    var path = (Context.Request.Path.Value ?? "").ToLowerInvariant();
+    var unread = site.Messages.Count(m => !m.IsRead);
+    var flash = TempData["Flash"] as string;
+
+    bool Active(string url) => path.TrimEnd('/').Equals(url.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>@(ViewData["Title"] ?? "Panel") · @s.SiteName Yönetim</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="@ThemeColors.Hex(t.Night, "#0B0D11")" />
+    <link rel="icon" href="/img/logo/favicon.svg" type="image/svg+xml" />
+    @await Html.PartialAsync("_AdminTheme", t)
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="adm">
+
+<button class="adm__burger" id="admBurger" type="button" aria-label="Menü">
+    @Icons.Svg("menu", "icon", 22)
+</button>
+
+<aside class="adm__side" id="admSide">
+    <a class="adm__brand" href="/admin">
+        <span class="adm__monogram">@s.LogoLetterOne@s.LogoLetterTwo</span>
+        <span class="adm__brandtext">
+            <strong>@s.SiteName</strong>
+            <em>Yönetim Paneli</em>
+        </span>
+    </a>
+
+    <nav class="adm__nav">
+        <a class="adm__link @(Active("/admin") ? "is-active" : "")" href="/admin">
+            @Icons.Svg("grid", "icon", 18) <span>Panel</span>
+        </a>
+
+        <a class="adm__link @(path.StartsWith("/admin/mesajlar") ? "is-active" : "")" href="/admin/mesajlar">
+            @Icons.Svg("inbox", "icon", 18) <span>Mesajlar</span>
+            @if (unread > 0)
+            {
+                <b class="adm__badge">@unread</b>
+            }
+        </a>
+
+        <span class="adm__group">Sayfa İçerikleri</span>
+        @foreach (var sec in ContentSchema.Sections)
+        {
+            <a class="adm__link @(Active($"/admin/bolum/{sec.Key}") ? "is-active" : "")" href="/admin/bolum/@sec.Key">
+                @Icons.Svg(sec.Icon, "icon", 18) <span>@sec.Title</span>
+            </a>
+        }
+
+        <span class="adm__group">Listeler</span>
+        @foreach (var collection in ContentSchema.Collections)
+        {
+            var count = collection.Target(site).Count;
+            <a class="adm__link @(path.StartsWith($"/admin/liste/{collection.Key}") ? "is-active" : "")" href="/admin/liste/@collection.Key">
+                @Icons.Svg(collection.Icon, "icon", 18) <span>@collection.Title</span>
+                <b class="adm__count">@count</b>
+            </a>
+        }
+    </nav>
+
+    <div class="adm__sidefoot">
+        <a class="adm__link adm__link--sub" href="/" target="_blank" rel="noopener">
+            @Icons.Svg("external", "icon", 18) <span>Siteyi görüntüle</span>
+        </a>
+        <form method="post" action="/admin/cikis">
+            @Html.AntiForgeryToken()
+            <button class="adm__link adm__link--sub adm__link--btn" type="submit">
+                @Icons.Svg("logout", "icon", 18) <span>Çıkış yap</span>
+            </button>
+        </form>
+    </div>
+</aside>
+
+<div class="adm__scrim" id="admScrim"></div>
+
+<main class="adm__main">
+    @* Kayıt sorunu HER panel sayfasında görünür: "kaydedildi" mesajı, değişikliğin yalnız
+       bellekte kaldığı (disk yazılamadı / content.json bozuk) durumu gizlemesin. *@
+    @if (!string.IsNullOrEmpty(ContentService.StorageWarning))
+    {
+        <div class="warnbar" role="alert">
+            @Icons.Svg("shield", "icon", 20)
+            <div>
+                <strong>Kayıt sorunu — değişiklikler diske yazılmıyor</strong>
+                <span>@ContentService.StorageWarning</span>
+            </div>
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(flash))
+    {
+        <div class="adm__flash" role="status">
+            @Icons.Svg("check", "icon", 18)
+            <span>@flash</span>
+            <button type="button" class="adm__flashx" aria-label="Kapat">@Icons.Svg("close", "icon", 16)</button>
+        </div>
+    }
+
+    @RenderBody()
+</main>
+
+<script src="~/js/admin.js" asp-append-version="true"></script>
+</body>
+</html>

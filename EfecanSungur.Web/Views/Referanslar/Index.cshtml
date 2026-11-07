@@ -1,0 +1,98 @@
+@model SiteContent
+@{
+    // SEO başlığı/açıklaması denetleyicide (ViewData) belirlenir — burada değil.
+    var all = Model.References
+        .Where(r => r.Visible && !string.IsNullOrWhiteSpace(r.Slug))
+        .OrderBy(r => r.Order)
+        .ToList();
+
+    string Cat(ReferenceItem r) => (r.Category ?? "").Trim().ToLowerInvariant() switch
+    {
+        "web" => "web",
+        "mobil" => "mobil",
+        "masaustu" => "masaustu",
+        _ => "diger"
+    };
+
+    // Filtre JS olmadan da çalışır: ?kategori=web → eşleşmeyen kartlar hidden basılır.
+    var allFilters = new List<(string Key, string Label)> { ("web", "Web"), ("mobil", "Mobil"), ("masaustu", "Masaüstü"), ("diger", "Diğer") };
+    // Boş kategori çipi gösterilmez ("Masaüstü 0" kanıt sayfasında masaüstü iddiasını zayıflatıyordu);
+    // ?kategori=masaustu adresi yine çalışır ve boş-durum metnini gösterir.
+    var filters = allFilters.Where(f => all.Any(r => Cat(r) == f.Key)).ToList();
+
+    var requested = (Context.Request.Query["kategori"].ToString() ?? "").Trim().ToLowerInvariant();
+    var active = allFilters.Any(f => f.Key == requested) ? requested : "";
+    var shown = active.Length == 0 ? all.Count : all.Count(r => Cat(r) == active);
+
+    var crumbs = new List<BreadcrumbItem> { new("Ana Sayfa", "/"), new("Referanslar", "/referanslar") };
+}
+
+@* ======================================================= SAYFA BAŞI *@
+<section class="phead">
+    <div class="shell">
+        @await Html.PartialAsync("_Crumbs", crumbs)
+        <span class="label" data-reveal><span class="label__num">01</span><span aria-hidden="true">—</span><span>Projeler</span></span>
+        <h1 class="h1">Referanslar</h1>
+        <p class="lead phead__lead">
+            Salurian Company referansları; çoğunu ortağım Mahir Topuz ile birlikte hayata geçirdik.
+            Her kartta işin türü, yılı ve güncel durumu yer alıyor.
+        </p>
+        @if (all.Count > 0)
+        {
+            <p class="label phead__count"><span class="label__num" data-filter-count>@shown</span><span>proje listeleniyor</span></p>
+        }
+    </div>
+</section>
+
+@* ========================================================= IZGARA *@
+<section class="sec sec--paper" aria-label="Proje listesi">
+    <div class="shell">
+        @if (all.Count > 0)
+        {
+            <nav class="filter" aria-label="Kategoriye göre filtrele" data-filter>
+                <a href="/referanslar" data-key="" aria-current="@(active.Length == 0 ? "true" : null)">
+                    <span>Tümü</span><span class="filter__n">@all.Count</span>
+                </a>
+                @foreach (var f in filters)
+                {
+                    <a href="/referanslar?kategori=@f.Key" data-key="@f.Key" aria-current="@(active == f.Key ? "true" : null)">
+                        <span>@f.Label</span><span class="filter__n">@all.Count(r => Cat(r) == f.Key)</span>
+                    </a>
+                }
+            </nav>
+
+            <div class="refgrid" data-filter-grid>
+                @{ var visibleIndex = 0; }
+                @foreach (var r in all)
+                {
+                    var hide = active.Length > 0 && Cat(r) != active;
+                    // İlk satırdaki 3 kart ilk ekranda: eager (fetchpriority yok).
+                    var eager = !hide && visibleIndex++ < 3;
+                    @await Html.PartialAsync("_WorkCard", r, new ViewDataDictionary(ViewData)
+                    {
+                        ["H"] = "h2",
+                        ["Hidden"] = hide,
+                        ["Eager"] = eager,
+                        ["Sizes"] = "(max-width: 600px) 92vw, (max-width: 1120px) 46vw, 410px"
+                    })
+                }
+            </div>
+
+            <div class="empty" data-filter-empty hidden="@(shown > 0 ? "hidden" : null)">
+                <p class="h3">Bu kategoride henüz proje yok</p>
+                <p>Diğer kategorilere göz atabilir ya da <a class="link-arrow" href="/referanslar"><span>tüm projeleri</span></a> görebilirsiniz.</p>
+            </div>
+        }
+        else
+        {
+            <div class="empty">
+                <p class="h3">Referanslar hazırlanıyor</p>
+                <p>Proje kayıtları çok yakında burada olacak. O zamana kadar
+                    <a class="link-arrow" href="https://salurian.com" target="_blank" rel="noopener"><span>salurian.com</span></a>
+                    üzerinden işlerimize göz atabilirsiniz.</p>
+            </div>
+        }
+    </div>
+</section>
+
+@await Html.PartialAsync("_CtaBand", Model, new ViewDataDictionary(ViewData) { ["CtaNum"] = "02" })

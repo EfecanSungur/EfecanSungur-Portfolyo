@@ -1,0 +1,39 @@
+@model SiteContent
+@{
+    var sec = (SectionDef)ViewData["Section"]!;
+    var target = sec.Target(Model);
+    ViewData["Title"] = sec.Title;
+}
+
+<div class="ph">
+    <div>
+        <span class="ph__eyebrow">Sayfa içeriği</span>
+        <h1>@sec.Title</h1>
+        <p>@sec.Description</p>
+    </div>
+    <div class="ph__actions">
+        <a class="b b--ghost" href="/admin">@Icons.Svg("back", "icon", 17) <span>Panele dön</span></a>
+        <a class="b b--ghost" href="/" target="_blank" rel="noopener">@Icons.Svg("eye", "icon", 17) <span>Önizle</span></a>
+    </div>
+</div>
+
+<form class="panel" method="post" action="/admin/bolum/@sec.Key" enctype="multipart/form-data" data-dirty>
+    @Html.AntiForgeryToken()
+
+    <div class="panel__body">
+        <div class="fields">
+            @foreach (var field in sec.Fields)
+            {
+                @await Html.PartialAsync("_Field", new FieldRenderModel { Field = field, Target = target })
+            }
+        </div>
+    </div>
+
+    <div class="panel__foot">
+        <span class="hint spacer">Ctrl+S ile de kaydedebilirsiniz.</span>
+        <a class="b b--ghost" href="/admin">Vazgeç</a>
+        <button class="b b--primary" type="submit">
+            @Icons.Svg("save", "icon", 17) <span>Kaydet</span>
+        </button>
+    </div>
+</form>

@@ -1,0 +1,100 @@
+@model FieldRenderModel
+@{
+    var f = Model.Field;
+    var id = f.Name;
+    var width = f.Width switch { "half" => "f--half", "third" => "f--third", _ => "f--full" };
+}
+
+<div class="f @width">
+    @if (f.Type != FieldType.Toggle)
+    {
+        <label for="@id">@f.Label</label>
+    }
+
+    @switch (f.Type)
+    {
+        case FieldType.Toggle:
+            <label class="togglef" for="@id">
+                <input type="checkbox" id="@id" name="@f.Name" value="true" @(Model.BoolValue ? "checked" : "") />
+                <span class="togglef__track"></span>
+                <span class="togglef__label">@f.Label</span>
+            </label>
+            break;
+
+        case FieldType.TextArea:
+            <textarea id="@id" name="@f.Name" placeholder="@f.Placeholder">@Model.Value</textarea>
+            break;
+
+        case FieldType.Lines:
+            <textarea id="@id" name="@f.Name" class="tall" placeholder="@f.Placeholder">@Model.Value</textarea>
+            break;
+
+        case FieldType.Select:
+            <select id="@id" name="@f.Name">
+                @foreach (var option in f.Options ?? Array.Empty<string>())
+                {
+                    <option value="@option" selected="@(option == Model.Value)">@option</option>
+                }
+            </select>
+            break;
+
+        case FieldType.Color:
+            <div class="colorf">
+                @* Boş değerde seçici v2 sinyal rengiyle açılır (eski bordo palet değil); <input type=color>
+                   yalnız #rrggbb kabul eder, bu yüzden değer normalleştirilir. *@
+                <input type="color" value="@ThemeColors.Hex(Model.Value, "#2F54EB").ToLowerInvariant()"
+                       aria-label="@f.Label renk seçici" tabindex="-1" />
+                <input type="text" id="@id" name="@f.Name" value="@Model.Value" placeholder="#2F54EB" spellcheck="false" />
+            </div>
+            break;
+
+        case FieldType.Image:
+            <div class="imgf">
+                <div class="imgf__preview">
+                    @if (!string.IsNullOrWhiteSpace(Model.Value))
+                    {
+                        <img src="@Model.Value" alt="Mevcut görsel" />
+                    }
+                    else
+                    {
+                        @Icons.Svg("image", "icon ph-ico", 30)
+                    }
+                </div>
+                <label class="imgf__file">
+                    @Icons.Svg("upload", "icon", 16)
+                    <span>Görsel yükle</span>
+                    <input type="file" name="file_@f.Name" accept="image/*" />
+                </label>
+                <span class="imgf__name"></span>
+                <input type="text" id="@id" name="@f.Name" value="@Model.Value"
+                       placeholder="/img/uploads/ornek.jpg veya https://…" spellcheck="false" />
+                <span class="f__help">Dosya yüklerseniz bu alan otomatik güncellenir. Elle yol veya tam URL de yazabilirsiniz.</span>
+            </div>
+            break;
+
+        case FieldType.Number:
+            <input type="number" id="@id" name="@f.Name" value="@Model.Value" placeholder="@f.Placeholder" />
+            break;
+
+        case FieldType.Email:
+            <input type="email" id="@id" name="@f.Name" value="@Model.Value" placeholder="@f.Placeholder" spellcheck="false" />
+            break;
+
+        case FieldType.Tel:
+            <input type="tel" id="@id" name="@f.Name" value="@Model.Value" placeholder="@f.Placeholder" spellcheck="false" />
+            break;
+
+        case FieldType.Url:
+            <input type="text" id="@id" name="@f.Name" value="@Model.Value" placeholder="@f.Placeholder" spellcheck="false" />
+            break;
+
+        default:
+            <input type="text" id="@id" name="@f.Name" value="@Model.Value" placeholder="@f.Placeholder" />
+            break;
+    }
+
+    @if (!string.IsNullOrWhiteSpace(f.Help) && f.Type != FieldType.Image)
+    {
+        <span class="f__help">@f.Help</span>
+    }
+</div>

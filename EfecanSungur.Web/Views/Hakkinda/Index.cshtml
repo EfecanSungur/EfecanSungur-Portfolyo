@@ -1,0 +1,171 @@
+@model SiteContent
+@{
+    // SEO başlığı/açıklaması denetleyicide (ViewData) belirlenir — burada değil.
+    var about = Model.About;
+    var s = Model.Settings;
+    var tr = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+
+    var paragraphs = about.Paragraphs.Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+    var facts = about.Facts.OrderBy(x => x.Order).ToList();
+
+    // Teknolojiler: panelde elle seçilen liste (Hakkında → Teknolojiler). Referansların ham
+    // Stack birleşimi BİLEREK kullanılmıyor (yakın tekrarlar ve teknoloji olmayan maddeler).
+    var stack = (about.Skills ?? new List<string>())
+        .Select(x => (x ?? "").Trim())
+        .Where(x => x.Length > 0)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+    var areas = s.ShowExpertise ? Model.Expertise.OrderBy(x => x.Order).Select(x => x.Title).Where(x => !string.IsNullOrWhiteSpace(x)).ToList() : new List<string>();
+    var gallery = s.ShowGallery
+        ? Model.Gallery.Where(g => !string.IsNullOrWhiteSpace(g.ImagePath)).OrderBy(g => g.Order).ToList()
+        : new List<GalleryItem>();
+    // Bölüm numaraları galeri açık/kapalıya göre kayar (01 sayfa başı).
+    var next = 2;
+
+    var crumbs = new List<BreadcrumbItem> { new("Ana Sayfa", "/"), new(about.Eyebrow is { Length: > 0 } e ? e : "Hakkında", "/hakkinda") };
+}
+
+@* ======================================================= SAYFA BAŞI *@
+<section class="phead">
+    <div class="shell">
+        @await Html.PartialAsync("_Crumbs", crumbs)
+        <span class="label" data-reveal><span class="label__num">01</span><span aria-hidden="true">—</span><span>@about.Eyebrow</span></span>
+        <h1 class="h1">@about.Title</h1>
+        @if (!string.IsNullOrWhiteSpace(about.Lead))
+        {
+            <p class="lead phead__lead">@about.Lead</p>
+        }
+    </div>
+</section>
+
+@* ======================================================== BİYOGRAFİ *@
+<section class="sec sec--surface" aria-label="Biyografi">
+    <div class="shell editorial">
+        @if (!string.IsNullOrWhiteSpace(about.ImagePath))
+        {
+            <figure class="figure editorial__media" data-reveal>
+                <div class="frame">
+                    @await Html.PartialAsync("_Picture", new PictureModel(about.ImagePath, about.ImageAlt, 1200, 1500,
+                        "(max-width: 860px) 92vw, (max-width: 1280px) 38vw, 480px", Eager: true))
+                </div>
+                <figcaption class="figure__cap">
+                    <span>@s.OwnerName</span>
+                    <span>@s.Role</span>
+                </figcaption>
+            </figure>
+        }
+
+        <div class="editorial__body">
+            <div class="prose">
+                @for (var i = 0; i < paragraphs.Count; i++)
+                {
+                    @* Referans adları (ör. Huawei Hedef Takip) o referansın sayfasına bağlanır — RefLinks. *@
+                    <p class="@(i == 0 ? "prose__first" : null)" data-reveal>@RefLinks.Linkify(Model, paragraphs[i])</p>
+                }
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(about.QuoteText))
+            {
+                <blockquote class="pullquote" data-reveal>
+                    <p>“@about.QuoteText”</p>
+                    <footer><span class="label">@s.OwnerName</span></footer>
+                </blockquote>
+            }
+
+            @if (facts.Count > 0)
+            {
+                <div class="block" data-reveal>
+                    <h2 class="h4 block__h">Hızlı bilgiler</h2>
+                    <dl class="facts">
+                        @foreach (var fact in facts)
+                        {
+                            <div>
+                                <dt>@fact.Label</dt>
+                                <dd>@RefLinks.Linkify(Model, fact.Value)</dd>
+                            </div>
+                        }
+                    </dl>
+                </div>
+            }
+
+            @if (areas.Count > 0)
+            {
+                <div class="block" data-reveal>
+                    <h2 class="h4 block__h">Alanlar</h2>
+                    <ul class="chips">
+                        @foreach (var a in areas) { <li class="chip">@a</li> }
+                    </ul>
+                </div>
+            }
+
+            @if (stack.Count > 0)
+            {
+                <div class="block" data-reveal>
+                    <h2 class="h4 block__h">Teknolojiler</h2>
+                    <ul class="chips">
+                        @foreach (var x in stack) { <li class="chip">@x</li> }
+                    </ul>
+                </div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(about.SignatureText))
+            {
+                <p class="signature" data-reveal>@about.SignatureText</p>
+            }
+
+            @if (Model.UpdatedAt > new DateTime(2000, 1, 1))
+            {
+                <span class="label updated">Son güncelleme: <time datetime="@Model.UpdatedAt.ToString("yyyy-MM-dd")">@Model.UpdatedAt.ToString("d MMMM yyyy", tr)</time></span>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(about.CtaText))
+            {
+                <div class="btns block" data-reveal>
+                    <a class="btn btn--signal" href="@about.CtaUrl"><span>@about.CtaText</span> @Icons.Svg("arrow", "icon", 18)</a>
+                    @if (s.ShowReferences && Model.References.Any(r => r.Visible))
+                    {
+                        <a class="btn btn--line" href="/referanslar"><span>Referanslar</span></a>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@* ========================================================== KARELER *@
+@if (gallery.Count > 0)
+{
+    <section class="sec sec--paper" aria-labelledby="gallery-title">
+        <div class="shell">
+            <div class="sec__head">
+                <span class="label" data-reveal><span class="label__num">@((next++).ToString("00"))</span><span aria-hidden="true">—</span><span>Galeri</span></span>
+                <h2 class="h2" id="gallery-title" data-reveal>Kareler</h2>
+            </div>
+            <ul class="gallery">
+                @for (var i = 0; i < gallery.Count; i++)
+                {
+                    var g = gallery[i];
+                    var alt = string.IsNullOrWhiteSpace(g.Alt) ? (string.IsNullOrWhiteSpace(g.Caption) ? s.OwnerName : g.Caption) : g.Alt;
+                    <li data-reveal>
+                        <figure class="figure">
+                            <div class="frame">
+                                @await Html.PartialAsync("_Picture", new PictureModel(g.ImagePath, alt, 1200, 1500,
+                                    "(max-width: 860px) 46vw, (max-width: 1280px) 23vw, 300px"))
+                            </div>
+                            <figcaption class="figure__cap">
+                                <span>@(string.IsNullOrWhiteSpace(g.Caption) ? s.OwnerName : g.Caption)</span>
+                                <span>@((i + 1).ToString("00"))</span>
+                            </figcaption>
+                        </figure>
+                    </li>
+                }
+            </ul>
+        </div>
+    </section>
+}
+
+@* ======================================================== KRONOLOJİ *@
+@await Html.PartialAsync("_Timeline", Model, new ViewDataDictionary(ViewData) { ["SecNum"] = (next++).ToString("00"), ["SecTitle"] = "Yolculuk" })
+
+@* ============================================================== CTA *@
+@await Html.PartialAsync("_CtaBand", Model, new ViewDataDictionary(ViewData) { ["CtaNum"] = next.ToString("00") })

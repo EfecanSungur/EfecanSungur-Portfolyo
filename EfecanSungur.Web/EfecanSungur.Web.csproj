@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Plesk / IIS altında Türkçe karakter ve kültür ayarları doğru çalışsın -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!--
+    ÖNEMLİ: App_Data yayına DAHİL EDİLMEZ.
+    Böylece siteyi yeniden yayınladığınızda sunucudaki canlı içerik (content.json)
+    ve gelen mesajlar silinmez. Sunucuda dosya yoksa uygulama ilk açılışta
+    başlangıç içeriğiyle kendisi oluşturur.
+    İçerik taşımak için yönetim panelindeki Yedek al / Geri yükle ekranını kullanın.
+  -->
+  <ItemGroup>
+    <Content Remove="App_Data\**" />
+    <None Include="App_Data\**" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <!--
+    Panelden yüklenen görseller de yayınla birlikte silinmesin.
+    Tohum görselleri (efecan-imza.jpg, efecan-antalya.jpg, img\galeri\) bilerek wwwroot\img\
+    altında durur — onlar uygulamayla birlikte gelir.
+  -->
+  <ItemGroup>
+    <Content Update="wwwroot\img\uploads\**" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <!-- Gelistirme ayarlari canliya gitmez. -->
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,30 @@
+@model ThemeSettings
+@{
+    // Panelin renk belirteçleri — sitenin "Ink & Paper / Signal" paletiyle aynı
+    // kaynaktan (Tema bölümü). Panel yazı tipleri BİLEREK sabit: tema fontu
+    // değiştirilse de yönetim ekranı okunaklı kalsın.
+    string Hex(string? v, string fb) => ThemeColors.Hex(v, fb);
+    string Mix(string a, string b, double p) => ThemeColors.Mix(a, b, p);
+    var paper = Hex(Model.Paper, "#F4F1EA");
+    var surface = Hex(Model.Surface, "#FFFFFF");
+}
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" />
+<style>
+    :root {
+        --night: @Hex(Model.Night, "#0B0D11");
+        --night-line: @Hex(Model.NightLine, "#262B35");
+        --paper: @paper;
+        --paper-soft: @Mix(paper, surface, .45);
+        --paper-deep: @Hex(Model.PaperDeep, "#E9E4D9");
+        --surface: @surface;
+        --text: @Hex(Model.TextMain, "#111318");
+        --text-muted: @Hex(Model.TextMuted, "#5A606A");
+        --signal: @Hex(Model.Signal, "#2F54EB");
+        --signal-soft: @Hex(Model.SignalSoft, "#8EA6FF");
+        --font-display: "Inter Tight", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    }
+</style>

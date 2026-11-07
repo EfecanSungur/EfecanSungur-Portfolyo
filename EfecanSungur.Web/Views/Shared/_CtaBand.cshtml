@@ -1,0 +1,36 @@
+@model SiteContent
+@{
+    // Sayfa sonu çağrı bandı — ana sayfa, hakkında, referanslar ve referans
+    // detayında aynı. Metinler İletişim bölümünden (panel) gelir.
+    var contact = Model.Contact;
+    var waLink = $"https://wa.me/{contact.WhatsAppNumber}?text={Uri.EscapeDataString(contact.WhatsAppMessage ?? "")}";
+    var num = ViewData["CtaNum"] as string;
+}
+<section class="sec sec--deep cta" aria-labelledby="cta-title">
+    <div class="shell cta__inner">
+        <div>
+            <span class="label" data-reveal>
+                @if (!string.IsNullOrEmpty(num))
+                {
+                    <span class="label__num">@num</span>
+                    <span aria-hidden="true">—</span>
+                }
+                <span>@contact.Eyebrow</span>
+            </span>
+            <h2 class="cta__title" id="cta-title" data-reveal>@contact.Title</h2>
+            <p class="cta__lead lead" data-reveal>@contact.Lead</p>
+        </div>
+        <div class="cta__side" data-reveal>
+            <a class="btn btn--signal" href="@waLink" target="_blank" rel="noopener">
+                @Icons.Svg("whatsapp", "icon", 18) <span>WhatsApp'tan yaz</span>
+            </a>
+            <a class="btn btn--line" href="/iletisim">
+                <span>İletişim sayfası</span> @Icons.Svg("arrow", "icon", 18)
+            </a>
+            <ul class="cta__lines">
+                <li><a href="tel:@contact.Phone">@Icons.Svg("phone", "icon", 16) <span>@contact.PhoneDisplay</span></a></li>
+                <li><a href="mailto:@contact.Email">@Icons.Svg("mail", "icon", 16) <span>@contact.Email</span></a></li>
+            </ul>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,60 @@
+@model ReferenceItem
+@{
+    // Tek referans kartı — ana sayfa "Seçili işler" ve /referanslar ızgarası.
+    // ViewData: "H" = başlık etiketi (h2/h3), "Hidden" = filtre dışı, "Sizes" = srcset sizes.
+    var r = Model;
+    var tag = ViewData["H"] as string == "h2" ? "h2" : "h3";
+    var hidden = ViewData["Hidden"] is true;
+    // "Eager" = ilk ekrandaki kart: eager yüklenir ama fetchpriority="high" ALMAZ (LCP değil).
+    var eager = ViewData["Eager"] is true && !hidden;
+    var sizes = ViewData["Sizes"] as string ?? "(max-width: 860px) 92vw, 600px";
+    var cat = (r.Category ?? "").Trim().ToLowerInvariant();
+    var catLabel = cat switch { "web" => "Web", "mobil" => "Mobil", "masaustu" => "Masaüstü", _ => "Diğer" };
+    var kind = string.IsNullOrWhiteSpace(r.Kind) ? catLabel : r.Kind;
+    var live = string.IsNullOrWhiteSpace(r.Status) || r.Status.Trim().Equals("Yayında", StringComparison.OrdinalIgnoreCase);
+    var name = string.IsNullOrWhiteSpace(r.Client) ? r.Title : r.Client;
+    var alt = string.IsNullOrWhiteSpace(r.ImageAlt) ? $"{r.Title} ekran görüntüsü" : r.ImageAlt;
+    var showClient = !string.IsNullOrWhiteSpace(r.Client)
+                     && !r.Title.Contains(r.Client, StringComparison.OrdinalIgnoreCase);
+}
+<article class="work" data-cat="@cat" hidden="@(hidden ? "hidden" : null)" data-reveal>
+    <div class="work__media">
+        @if (!string.IsNullOrWhiteSpace(r.ImagePath))
+        {
+            @await Html.PartialAsync("_Picture", new PictureModel(r.ImagePath, alt, 1600, 1000, sizes, Eager: eager, HighPriority: false))
+        }
+        else
+        {
+            <div class="cover-ph" aria-hidden="true">
+                <div class="cover-ph__top">
+                    <span class="label">@catLabel</span>
+                    @if (!string.IsNullOrWhiteSpace(r.Year)) { <span class="label">@r.Year</span> }
+                </div>
+                <span class="cover-ph__name">@name</span>
+            </div>
+        }
+    </div>
+    <div class="work__meta">
+        <span class="label">@kind@(string.IsNullOrWhiteSpace(r.Year) ? "" : " · " + r.Year)</span>
+        @if (!string.IsNullOrWhiteSpace(r.Status))
+        {
+            <span class="badge @(live ? "badge--live" : "badge--wip")">@r.Status</span>
+        }
+    </div>
+    @if (tag == "h2")
+    {
+        <h2 class="work__title"><a href="/referanslar/@r.Slug">@r.Title</a></h2>
+    }
+    else
+    {
+        <h3 class="work__title"><a href="/referanslar/@r.Slug">@r.Title</a></h3>
+    }
+    @if (showClient)
+    {
+        <p class="work__client">@r.Client</p>
+    }
+    @if (!string.IsNullOrWhiteSpace(r.Summary))
+    {
+        <p class="work__sum">@r.Summary</p>
+    }
+</article>

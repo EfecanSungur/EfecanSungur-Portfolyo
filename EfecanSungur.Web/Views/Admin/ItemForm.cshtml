@@ -1,0 +1,69 @@
+@model SiteContent
+@{
+    var col = (CollectionDef)ViewData["Collection"]!;
+    var item = (ContentItem)ViewData["Item"]!;
+    var isNew = ViewData["IsNew"] is true;
+    ViewData["Title"] = isNew ? $"Yeni {col.Singular}" : $"{col.Singular} düzenle";
+}
+
+<div class="ph">
+    <div>
+        <span class="ph__eyebrow">@col.Title</span>
+        <h1>@(isNew ? $"Yeni {col.Singular}" : $"{col.Singular} düzenle")</h1>
+        <p>@col.Description</p>
+    </div>
+    <div class="ph__actions">
+        <a class="b b--ghost" href="/admin/liste/@col.Key">
+            @Icons.Svg("back", "icon", 17) <span>Listeye dön</span>
+        </a>
+    </div>
+</div>
+
+<form class="panel" method="post" action="/admin/liste/@col.Key/kaydet" enctype="multipart/form-data" data-dirty>
+    @Html.AntiForgeryToken()
+    @if (!isNew)
+    {
+        <input type="hidden" name="id" value="@item.Id" />
+    }
+
+    <div class="panel__body">
+        <div class="fields">
+            @foreach (var field in col.Fields)
+            {
+                @await Html.PartialAsync("_Field", new FieldRenderModel { Field = field, Target = item })
+            }
+        </div>
+    </div>
+
+    <div class="panel__foot">
+        <span class="hint spacer">
+            @if (!isNew)
+            {
+                <text>Kayıt no: @item.Id</text>
+            }
+        </span>
+        <a class="b b--ghost" href="/admin/liste/@col.Key">Vazgeç</a>
+        <button class="b b--primary" type="submit">
+            @Icons.Svg("save", "icon", 17) <span>@(isNew ? "Ekle" : "Kaydet")</span>
+        </button>
+    </div>
+</form>
+
+@if (!isNew)
+{
+    <section class="panel danger-zone" style="margin-top:20px">
+        <div class="panel__head">
+            <div>
+                <h2>Kaydı sil</h2>
+                <p>Bu işlem geri alınamaz.</p>
+            </div>
+            <form method="post" action="/admin/liste/@col.Key/sil/@item.Id"
+                  data-confirm="Bu @col.Singular.ToLower() kalıcı olarak silinecek. Onaylıyor musunuz?">
+                @Html.AntiForgeryToken()
+                <button class="b b--danger" type="submit">
+                    @Icons.Svg("trash", "icon", 17) <span>Sil</span>
+                </button>
+            </form>
+        </div>
+    </section>
+}

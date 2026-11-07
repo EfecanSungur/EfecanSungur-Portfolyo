@@ -1,0 +1,31 @@
+@model SiteContent
+@{
+    // Gece zeminli kısa kronoloji — ana sayfa ve hakkında.
+    var items = Model.Timeline.OrderBy(x => x.Order).ToList();
+    var num = ViewData["SecNum"] as string ?? "";
+    var title = ViewData["SecTitle"] as string ?? "Yolculuk";
+}
+@if (Model.Settings.ShowTimeline && items.Count > 0)
+{
+    <section class="sec sec--night dark texture" aria-labelledby="tl-title">
+        <div class="shell">
+            <div class="sec__head">
+                <span class="label" data-reveal>
+                    @if (num.Length > 0) { <span class="label__num">@num</span><span aria-hidden="true">—</span> }
+                    <span>Kronoloji</span>
+                </span>
+                <h2 class="h2" id="tl-title" data-reveal>@title</h2>
+            </div>
+            <ol class="tline">
+                @foreach (var item in items)
+                {
+                    <li class="tline__item" data-reveal>
+                        <span class="tline__year">@item.Year</span>
+                        <h3 class="tline__title">@item.Title</h3>
+                        <p class="tline__text">@item.Description</p>
+                    </li>
+                }
+            </ol>
+        </div>
+    </section>
+}

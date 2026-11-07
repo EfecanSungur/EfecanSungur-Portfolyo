@@ -1,0 +1,316 @@
+@inject IContentService ContentService
+@{
+    var site = ContentService.Get();
+    var s = site.Settings;
+    var t = site.Theme;
+    var contact = site.Contact;
+
+    var path = Context.Request.Path.Value ?? "/";
+    var isHome = path == "/" || path.Length == 0;
+
+    // ------------------------------------------------------------- yazı tipleri
+    // Services/ThemeFonts.cs: bilinmeyen ad seçilirse yuvanın varsayılanına düşer
+    // (geçersiz bir css2 isteği tüm fontları düşürür). Tarayıcı yalnızca sayfada
+    // gerçekten kullanılan ağırlıkların dosyalarını indirir.
+    var displayFont = ThemeFonts.CssName(t.DisplayFont, ThemeFonts.DefaultDisplay);
+    var bodyFont = ThemeFonts.CssName(t.BodyFont, ThemeFonts.DefaultBody);
+    var accentFont = ThemeFonts.CssName(t.AccentFont, ThemeFonts.DefaultAccent);
+    var monoFont = ThemeFonts.CssName(t.MonoFont, ThemeFonts.DefaultMono);
+    var fontsUrl = ThemeFonts.CssUrl(t);
+    string Css(string f) => f.Replace("\"", "").Replace("<", "").Replace(";", "");
+
+    // ------------------------------------------------------------------ renkler
+    // Tema değerleri panelden gelir; bozuk bir değer stil bloğunu kırmasın diye
+    // #RRGGBB'ye normalleştirilir. Yardımcı tonlar sunucuda karıştırılır (her
+    // tarayıcıda aynı sonuç; color-mix desteğine bağlı değil).
+    // Services/ThemeColors.cs — _SeoHead (theme-color) ve panel teması aynı yardımcıyı kullanır.
+    string Hex(string? v, string fb) => ThemeColors.Hex(v, fb);
+    string Mix(string a, string b, double p) => ThemeColors.Mix(a, b, p);
+    var night = Hex(t.Night, "#0B0D11");
+    var nightSoft = Hex(t.NightSoft, "#151820");
+    var nightLine = Hex(t.NightLine, "#262B35");
+    var paper = Hex(t.Paper, "#F4F1EA");
+    var paperDeep = Hex(t.PaperDeep, "#E9E4D9");
+    var surface = Hex(t.Surface, "#FFFFFF");
+    var text = Hex(t.TextMain, "#111318");
+    var muted = Hex(t.TextMuted, "#5A606A");
+    var signal = Hex(t.Signal, "#2F54EB");
+    var signalSoft = Hex(t.SignalSoft, "#8EA6FF");
+
+    var waLink = $"https://wa.me/{contact.WhatsAppNumber}?text={Uri.EscapeDataString(contact.WhatsAppMessage ?? "")}";
+    // "Referanslar bölümü" kapalıysa /referanslar 404 döner — menüde de bağlantı kalmaz.
+    var navItems = site.Nav.Where(n => n.Visible)
+        .Where(n => s.ShowReferences || !(n.Url ?? "").TrimEnd('/').Equals("/referanslar", StringComparison.OrdinalIgnoreCase))
+        .OrderBy(n => n.Order).ToList();
+
+    bool IsActive(string url)
+    {
+        var u = (url ?? "").TrimEnd('/');
+        var p = path.TrimEnd('/');
+        if (u.Length == 0) return p.Length == 0;
+        return p.Equals(u, StringComparison.OrdinalIgnoreCase)
+               || p.StartsWith(u + "/", StringComparison.OrdinalIgnoreCase);
+    }
+    string? Current(string url) => IsActive(url) ? "page" : null;
+
+    // Mobil alt sekme barı: 4 sayfa + WhatsApp. Etiketler menüden okunur.
+    string NavLabel(string url, string fallback) =>
+        site.Nav.FirstOrDefault(n => string.Equals(n.Url.TrimEnd('/'), url.TrimEnd('/'), StringComparison.OrdinalIgnoreCase))?.Label is { Length: > 0 } l ? l : fallback;
+    var tabs = new List<(string Url, string Label, string Icon)>
+    {
+        ("/", NavLabel("/", "Ana Sayfa"), "home"),
+        ("/hakkinda", NavLabel("/hakkinda", "Hakkında"), "user"),
+    };
+    if (s.ShowReferences) { tabs.Add(("/referanslar", NavLabel("/referanslar", "Referanslar"), "grid")); }
+    tabs.Add(("/iletisim", NavLabel("/iletisim", "İletişim"), "mail"));
+
+    var bio = (s.ShortBio ?? "").Trim();
+    var firstStop = bio.IndexOf(". ", StringComparison.Ordinal);
+    var bioLine = firstStop > 0 ? bio[..(firstStop + 1)] : bio;
+
+    var socials = site.Socials.OrderBy(x => x.Order).ToList();
+    var hasSalurian = socials.Any(x => (x.Url ?? "").Contains("salurian.com", StringComparison.OrdinalIgnoreCase));
+    var city = (contact.Address ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+}
+<!DOCTYPE html>
+<html lang="tr" data-page="@(isHome ? "home" : path.Trim('/').Split('/')[0])">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    @await Html.PartialAsync("_SeoHead", site)
+
+    <link rel="icon" href="/img/logo/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/img/logo/favicon.svg" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="@fontsUrl" />
+
+    <style>
+        :root {
+            --night: @night;
+            --night-soft: @nightSoft;
+            --night-line: @nightLine;
+            --night-grid: @Mix(nightLine, night, .5);
+            --on-night: @Mix(paper, night, .96);
+            --on-night-muted: @Mix(paper, night, .64);
+            --paper: @paper;
+            --paper-soft: @Mix(paper, surface, .5);
+            --paper-deep: @paperDeep;
+            --paper-grid: @Mix(text, paperDeep, .06);
+            --surface: @surface;
+            --text: @text;
+            --text-muted: @muted;
+            --line: @Mix(text, paper, .13);
+            --line-strong: @Mix(text, paper, .32);
+            --signal: @signal;
+            --signal-soft: @signalSoft;
+            --signal-wash: @Mix(signal, surface, .07);
+            --danger: #B42318;
+            --font-display: "@Css(displayFont)", "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+            --font-body: "@Css(bodyFont)", system-ui, -apple-system, "Segoe UI", sans-serif;
+            --font-accent: "@Css(accentFont)", Georgia, "Times New Roman", serif;
+            --font-mono: "@Css(monoFont)", ui-monospace, "Cascadia Mono", Consolas, monospace;
+        }
+    </style>
+
+    @* JS varsa işaretle — reveal ve açılış perdesi YALNIZCA bu durumda gizli
+       başlar; JS çalışmazsa tüm içerik doğrudan görünür kalır. *@
+    <script>document.documentElement.classList.add('js');</script>
+
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/mobile.css" asp-append-version="true" media="(max-width: 860px)" />
+
+    @await Html.PartialAsync("_StructuredData", site)
+
+    @await RenderSectionAsync("Head", required: false)
+</head>
+<body class="@(isHome ? "is-home" : "is-inner")">
+
+@if (s.ShowIntro)
+{
+    <div class="intro" id="intro" aria-hidden="true">
+        @{ ViewData["LogoVariant"] = "intro"; }
+        @await Html.PartialAsync("_Logo", s)
+    </div>
+}
+
+<a class="skip" href="#main">İçeriğe geç</a>
+
+@* ================================================= MASAÜSTÜ ÜST BAR (≥861px) *@
+<header class="dhdr @(isHome ? "hdr--over" : "")" data-hdr>
+    <div class="shell dhdr__inner">
+        <a class="brand" href="/" aria-label="@s.SiteName — ana sayfa">
+            @{ ViewData["LogoVariant"] = "mark"; }
+            @await Html.PartialAsync("_Logo", s)
+            <span class="brand__word" aria-hidden="true">@s.LogoWordmark</span>
+        </a>
+
+        <nav class="dnav" aria-label="Ana menü">
+            <ul>
+                @foreach (var item in navItems)
+                {
+                    <li><a href="@item.Url" aria-current="@Current(item.Url)">@item.Label</a></li>
+                }
+            </ul>
+        </nav>
+
+        <a class="btn btn--signal btn--sm dhdr__cta" href="@waLink" target="_blank" rel="noopener">
+            <span>Projenizi konuşalım</span> @Icons.Svg("arrow-up-right", "icon", 16)
+        </a>
+    </div>
+</header>
+
+@* ===================================================== MOBİL ÜST BAR (≤860px) *@
+<header class="mhdr @(isHome ? "hdr--over" : "")" data-hdr>
+    <a class="brand brand--m" href="/" aria-label="@s.SiteName — ana sayfa">
+        @{ ViewData["LogoVariant"] = "mark"; }
+        @await Html.PartialAsync("_Logo", s)
+        <span class="brand__word" aria-hidden="true">@s.LogoWordmark</span>
+    </a>
+    <button class="burger" id="burger" type="button" aria-label="Menüyü aç" aria-expanded="false" aria-controls="drawer">
+        <span></span><span></span>
+    </button>
+</header>
+
+<div class="drawer dark" id="drawer" hidden>
+    <div class="drawer__panel" role="dialog" aria-modal="true" aria-label="Menü">
+        <div class="drawer__top">
+            <span class="label">Menü</span>
+            <button class="drawer__close" id="drawerClose" type="button" aria-label="Menüyü kapat">@Icons.Svg("close", "icon", 22)</button>
+        </div>
+        <nav aria-label="Mobil menü">
+            <ol class="drawer__nav">
+                @{ var di = 0; }
+                @foreach (var item in navItems)
+                {
+                    di++;
+                    <li>
+                        <a href="@item.Url" aria-current="@Current(item.Url)">
+                            <span class="drawer__num">@di.ToString("00")</span>
+                            <span class="drawer__text">@item.Label</span>
+                            @Icons.Svg("arrow", "icon", 20)
+                        </a>
+                    </li>
+                }
+            </ol>
+        </nav>
+        <div class="drawer__foot">
+            <a class="btn btn--signal btn--block" href="@waLink" target="_blank" rel="noopener">
+                @Icons.Svg("whatsapp", "icon", 18) <span>WhatsApp'tan yaz</span>
+            </a>
+            <ul class="drawer__meta">
+                <li><a href="tel:@contact.Phone">@Icons.Svg("phone", "icon", 16) <span>@contact.PhoneDisplay</span></a></li>
+                <li><a href="mailto:@contact.Email">@Icons.Svg("mail", "icon", 16) <span>@contact.Email</span></a></li>
+                <li><span>@Icons.Svg("pin", "icon", 16) <span>@contact.Address</span></span></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<main id="main" tabindex="-1">
+    @RenderBody()
+</main>
+
+@* ==================================================================== FOOTER *@
+@* Footer'da ayrı bir çağrı bandı YOK: her sayfa zaten kendi iletişim bandıyla (_CtaBand)
+   ya da iletişim formuyla biter — art arda iki CTA olmasın. Slogan marka bloğunda durur. *@
+<footer class="ftr dark">
+    <div class="shell">
+        <div class="ftr__grid">
+            <div class="ftr__brand">
+                <a class="brand brand--foot" href="/" aria-label="@s.SiteName — ana sayfa">
+                    @{ ViewData["LogoVariant"] = "foot"; }
+                    @await Html.PartialAsync("_Logo", s)
+                    <span class="brand__word" aria-hidden="true">@s.LogoWordmark</span>
+                </a>
+                @if (!string.IsNullOrWhiteSpace(s.FooterTagline))
+                {
+                    <p class="ftr__statement">@s.FooterTagline</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(bioLine))
+                {
+                    <p class="ftr__bio">@bioLine</p>
+                }
+            </div>
+
+            <div class="ftr__col">
+                <h2 class="ftr__h">Sayfalar</h2>
+                <ul>
+                    @foreach (var item in navItems)
+                    {
+                        <li><a href="@item.Url">@item.Label</a></li>
+                    }
+                </ul>
+            </div>
+
+            <div class="ftr__col">
+                <h2 class="ftr__h">İletişim</h2>
+                <ul>
+                    <li><a href="tel:@contact.Phone">@contact.PhoneDisplay</a></li>
+                    <li><a href="mailto:@contact.Email">@contact.Email</a></li>
+                    <li><a href="@waLink" target="_blank" rel="noopener">WhatsApp</a></li>
+                    <li><span>@contact.Address</span></li>
+                </ul>
+            </div>
+
+            <div class="ftr__col">
+                <h2 class="ftr__h">Bağlantılar</h2>
+                <ul>
+                    @foreach (var soc in socials)
+                    {
+                        <li>
+                            <a href="@soc.Url" target="_blank" rel="noopener">
+                                @Icons.Svg(soc.Icon, "icon", 16) <span>@soc.Label</span>
+                            </a>
+                        </li>
+                    }
+                    @if (!hasSalurian)
+                    {
+                        <li><a href="https://salurian.com" target="_blank" rel="noopener">@Icons.Svg("link", "icon", 16) <span>Salurian Company</span></a></li>
+                    }
+                </ul>
+            </div>
+        </div>
+
+        <div class="ftr__bar">
+            <span>© @DateTime.Now.Year @s.CopyrightText</span>
+            @if (!string.IsNullOrWhiteSpace(city))
+            {
+                <span class="ftr__place">@city · Türkiye</span>
+            }
+        </div>
+
+        <div class="ftr__admin">
+            <a href="/admin" rel="nofollow">@Icons.Svg("settings", "icon", 14) <span>Yönetim Paneli</span></a>
+        </div>
+    </div>
+</footer>
+
+@* ======================================================= MOBİL ALT SEKME BARI *@
+<nav class="tabbar" aria-label="Mobil hızlı menü">
+    @foreach (var tab in tabs)
+    {
+        <a href="@tab.Url" aria-current="@Current(tab.Url)">
+            @Icons.Svg(tab.Icon, "icon", 21)
+            <span>@tab.Label</span>
+        </a>
+    }
+    <a href="@waLink" target="_blank" rel="noopener" class="tabbar__wa">
+        @Icons.Svg("whatsapp", "icon", 21)
+        <span>WhatsApp</span>
+    </a>
+</nav>
+
+@if (s.ShowWhatsAppFloat)
+{
+    <a class="wafab" href="@waLink" target="_blank" rel="noopener">
+        @Icons.Svg("whatsapp", "icon", 18)
+        <span>WhatsApp</span>
+    </a>
+}
+
+<script src="~/js/site.js" asp-append-version="true" defer></script>
+@await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

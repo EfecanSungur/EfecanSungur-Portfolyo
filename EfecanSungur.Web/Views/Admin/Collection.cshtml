@@ -1,0 +1,144 @@
+@model SiteContent
+@using System.Collections
+@{
+    var col = (CollectionDef)ViewData["Collection"]!;
+    var list = col.Target(Model).Cast<ContentItem>().OrderBy(i => i.Order).ToList();
+    ViewData["Title"] = col.Title;
+
+    FieldDef? FieldOf(string name) => col.Fields.FirstOrDefault(f => f.Name == name);
+    string LabelOf(string name) => FieldOf(name)?.Label ?? name;
+}
+
+<div class="ph">
+    <div>
+        <span class="ph__eyebrow">Liste</span>
+        <h1>@col.Title</h1>
+        <p>@col.Description</p>
+    </div>
+    <div class="ph__actions">
+        <a class="b b--ghost" href="/admin">@Icons.Svg("back", "icon", 17) <span>Panele dön</span></a>
+        <a class="b b--primary" href="/admin/liste/@col.Key/yeni">
+            @Icons.Svg("plus", "icon", 17) <span>@col.Singular ekle</span>
+        </a>
+    </div>
+</div>
+
+<section class="panel">
+    <div class="panel__head">
+        <div>
+            <h2>@list.Count kayıt</h2>
+            <p>Sıralama, sitede görünen sırayı belirler. Oklarla taşıyabilirsiniz.</p>
+        </div>
+    </div>
+
+    @if (!list.Any())
+    {
+        <div class="empty">
+            <div class="empty__icon">@Icons.Svg(col.Icon, "icon", 24)</div>
+            <h3>Henüz kayıt yok</h3>
+            <p>İlk @col.Singular.ToLower() kaydını ekleyerek başlayın. Eklediğiniz her öğe sitede anında görünür.</p>
+            <a class="b b--primary" href="/admin/liste/@col.Key/yeni">
+                @Icons.Svg("plus", "icon", 17) <span>@col.Singular ekle</span>
+            </a>
+        </div>
+    }
+    else
+    {
+        <div class="tablewrap">
+            <table class="t">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        @foreach (var column in col.ListColumns)
+                        {
+                            <th>@LabelOf(column)</th>
+                        }
+                        <th>Sıra</th>
+                        <th style="text-align:right">İşlem</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (var i = 0; i < list.Count; i++)
+                    {
+                        var item = list[i];
+                        <tr>
+                            <td class="num">@(i + 1)</td>
+
+                            @foreach (var column in col.ListColumns)
+                            {
+                                var def = FieldOf(column);
+                                var raw = ContentSchema.Read(item, column);
+                                var text = ContentSchema.ReadString(item, column);
+                                <td data-label="@LabelOf(column)">
+                                    @if (def?.Type == FieldType.Image)
+                                    {
+                                        @if (!string.IsNullOrWhiteSpace(text))
+                                        {
+                                            <img class="thumb" src="@text" alt="" loading="lazy" />
+                                        }
+                                        else
+                                        {
+                                            <span class="hint">—</span>
+                                        }
+                                    }
+                                    else if (raw is bool flag)
+                                    {
+                                        <span class="pill @(flag ? "" : "pill--off")">@(flag ? "Açık" : "Kapalı")</span>
+                                    }
+                                    else if (string.IsNullOrWhiteSpace(text))
+                                    {
+                                        <span class="hint">—</span>
+                                    }
+                                    else if (column == col.ListColumns.First())
+                                    {
+                                        <span class="strong trunc">@text</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="trunc">@text</span>
+                                    }
+                                </td>
+                            }
+
+                            <td data-label="Sıra">
+                                <div class="rowacts" style="justify-content:flex-start">
+                                    <form method="post" action="/admin/liste/@col.Key/tasi/@item.Id">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="yon" value="yukari" />
+                                        <button class="b b--ghost b--sm b--icon" type="submit"
+                                                title="Yukarı taşı" aria-label="Yukarı taşı" @(i == 0 ? "disabled" : "")>
+                                            @Icons.Svg("up", "icon", 15)
+                                        </button>
+                                    </form>
+                                    <form method="post" action="/admin/liste/@col.Key/tasi/@item.Id">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="yon" value="asagi" />
+                                        <button class="b b--ghost b--sm b--icon" type="submit"
+                                                title="Aşağı taşı" aria-label="Aşağı taşı" @(i == list.Count - 1 ? "disabled" : "")>
+                                            @Icons.Svg("down", "icon", 15)
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+
+                            <td class="acts" data-label="İşlem">
+                                <div class="rowacts">
+                                    <a class="b b--ghost b--sm" href="/admin/liste/@col.Key/duzenle/@item.Id">
+                                        @Icons.Svg("edit", "icon", 15) <span>Düzenle</span>
+                                    </a>
+                                    <form method="post" action="/admin/liste/@col.Key/sil/@item.Id"
+                                          data-confirm="Bu @col.Singular.ToLower() kalıcı olarak silinecek. Onaylıyor musunuz?">
+                                        @Html.AntiForgeryToken()
+                                        <button class="b b--danger b--sm" type="submit">
+                                            @Icons.Svg("trash", "icon", 15) <span>Sil</span>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

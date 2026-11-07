@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="10" fill="#0B0D11"/>
+  <g font-family="'Inter Tight', Inter, 'Segoe UI', Arial, sans-serif" font-size="32" font-weight="700" letter-spacing="-1.5">
+    <text x="8.5" y="41" fill="#EBE8E1">E</text>
+    <text x="30" y="41" fill="none" stroke="#EBE8E1" stroke-width="1.3">S</text>
+  </g>
+  <path d="M10 50 H54" stroke="#8EA6FF" stroke-width="1.6"/>
+</svg>

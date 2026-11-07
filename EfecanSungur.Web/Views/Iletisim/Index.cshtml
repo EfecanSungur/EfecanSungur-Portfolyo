@@ -1,0 +1,197 @@
+@model ContactFormModel
+@inject IContentService ContentService
+@{
+    // SEO başlığı/açıklaması denetleyicide (ViewData) belirlenir — burada değil.
+    var site = ContentService.Get();
+    var contact = site.Contact;
+    var s = site.Settings;
+
+    var waLink = $"https://wa.me/{contact.WhatsAppNumber}?text={Uri.EscapeDataString(contact.WhatsAppMessage ?? "")}";
+    var success = TempData["ContactSuccess"] as string;
+    var hasErrors = !ViewData.ModelState.IsValid;
+    var formError = ViewData["FormError"] as string;
+    var faqs = s.ShowFaq ? site.Faq.OrderBy(x => x.Order).ToList() : new List<FaqItem>();
+    var crumbs = new List<BreadcrumbItem> { new("Ana Sayfa", "/"), new(contact.Eyebrow is { Length: > 0 } e ? e : "İletişim", "/iletisim") };
+}
+
+@* ======================================================= SAYFA BAŞI *@
+<section class="phead">
+    <div class="shell">
+        @await Html.PartialAsync("_Crumbs", crumbs)
+        @* H1 kişi + niyet içerir ("Efecan Sungur ile iletişim"); panelden gelen kısa başlık
+           ("Konuşalım") üst etiket olur. *@
+        <span class="label" data-reveal><span class="label__num">01</span><span aria-hidden="true">—</span><span>@(string.IsNullOrWhiteSpace(contact.Title) ? contact.Eyebrow : contact.Title)</span></span>
+        <h1 class="h1">@s.OwnerName ile iletişim</h1>
+        @if (!string.IsNullOrWhiteSpace(contact.Lead))
+        {
+            <p class="lead phead__lead">@contact.Lead</p>
+        }
+    </div>
+</section>
+
+@* ================================================== İLETİŞİM KARTLARI *@
+<section class="sec sec--tight sec--surface" aria-label="İletişim bilgileri">
+    <div class="shell">
+        <div class="ccards">
+            <div class="ccard" data-reveal>
+                @Icons.Svg("phone", "icon", 22)
+                <span class="label ccard__label">Telefon</span>
+                <a class="ccard__value" href="tel:@contact.Phone">@contact.PhoneDisplay</a>
+                <a class="link-arrow" href="@waLink" target="_blank" rel="noopener"><span>WhatsApp'tan yaz</span> @Icons.Svg("arrow-up-right", "icon", 16)</a>
+            </div>
+            <div class="ccard" data-reveal>
+                @Icons.Svg("mail", "icon", 22)
+                <span class="label ccard__label">E-posta</span>
+                <a class="ccard__value" href="mailto:@contact.Email">@contact.Email</a>
+            </div>
+            <div class="ccard" data-reveal>
+                @Icons.Svg("pin", "icon", 22)
+                <span class="label ccard__label">Konum</span>
+                <span class="ccard__value">@contact.Address</span>
+            </div>
+            <div class="ccard" data-reveal>
+                @Icons.Svg("clock", "icon", 22)
+                <span class="label ccard__label">Çalışma saatleri</span>
+                <span class="ccard__value">@contact.WorkingHours</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* ============================================================= FORM *@
+<section class="sec sec--paper" aria-labelledby="form-title">
+    <div class="shell contact-grid">
+        @if (contact.FormEnabled)
+        {
+            <form class="form" method="post" action="/iletisim" novalidate id="form">
+                @Html.AntiForgeryToken()
+
+                <div class="form__head">
+                    <span class="label"><span class="label__num">02</span><span aria-hidden="true">—</span><span>Form</span></span>
+                    <h2 class="h2" id="form-title">@contact.FormTitle</h2>
+                    @if (!string.IsNullOrWhiteSpace(contact.FormNote))
+                    {
+                        <p>@contact.FormNote</p>
+                    }
+                </div>
+
+                @if (!string.IsNullOrEmpty(success))
+                {
+                    <div class="alert alert--ok" role="status">
+                        @Icons.Svg("check", "icon", 20)
+                        <span>@success</span>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(formError))
+                {
+                    <div class="alert alert--err" role="alert">
+                        @Icons.Svg("info", "icon", 20)
+                        <span>@formError</span>
+                    </div>
+                }
+                else if (hasErrors)
+                {
+                    <div class="alert alert--err" role="alert">
+                        @Icons.Svg("info", "icon", 20)
+                        <span>Formu gönderemedik — işaretli alanları kontrol eder misiniz?</span>
+                    </div>
+                }
+
+                <div class="form__row">
+                    <div class="field">
+                        <label for="Name">Ad Soyad *</label>
+                        <input id="Name" name="Name" value="@Model.Name" placeholder="Adınız" autocomplete="name" required maxlength="80"
+                               aria-describedby="Name-err" aria-invalid="@(ViewData.ModelState["Name"]?.Errors.Count > 0 ? "true" : null)" />
+                        <span class="err" id="Name-err">@Html.ValidationMessage("Name")</span>
+                    </div>
+                    <div class="field">
+                        <label for="Email">E-posta *</label>
+                        <input id="Email" name="Email" type="email" value="@Model.Email" placeholder="ornek@@mail.com" autocomplete="email" required maxlength="120"
+                               aria-describedby="Email-err" aria-invalid="@(ViewData.ModelState["Email"]?.Errors.Count > 0 ? "true" : null)" />
+                        <span class="err" id="Email-err">@Html.ValidationMessage("Email")</span>
+                    </div>
+                </div>
+
+                <div class="form__row">
+                    <div class="field">
+                        <label for="Phone">Telefon</label>
+                        <input id="Phone" name="Phone" type="tel" value="@Model.Phone" placeholder="05xx xxx xx xx" autocomplete="tel" maxlength="30"
+                               aria-describedby="Phone-err" />
+                        <span class="err" id="Phone-err">@Html.ValidationMessage("Phone")</span>
+                    </div>
+                    <div class="field">
+                        <label for="Subject">Konu</label>
+                        <input id="Subject" name="Subject" value="@Model.Subject" placeholder="Ne hakkında konuşalım?" maxlength="120"
+                               aria-describedby="Subject-err" />
+                        <span class="err" id="Subject-err">@Html.ValidationMessage("Subject")</span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label for="Message">Mesajınız *</label>
+                    <textarea id="Message" name="Message" placeholder="Kısaca projenizden bahsedin…" required maxlength="3000"
+                              aria-describedby="Message-err" aria-invalid="@(ViewData.ModelState["Message"]?.Errors.Count > 0 ? "true" : null)">@Model.Message</textarea>
+                    <span class="err" id="Message-err">@Html.ValidationMessage("Message")</span>
+                </div>
+
+                <div class="hpot" aria-hidden="true">
+                    <label for="Website">Web sitesi</label>
+                    <input id="Website" name="Website" tabindex="-1" autocomplete="off" />
+                </div>
+
+                <button class="btn btn--signal btn--block" type="submit">
+                    <span>Mesajı gönder</span> @Icons.Svg("arrow", "icon", 18)
+                </button>
+            </form>
+        }
+        else
+        {
+            <div class="form">
+                <h2 class="h3" id="form-title">Form şu an kapalı</h2>
+                <p class="muted form__note">Bana telefon, WhatsApp veya e-posta üzerinden ulaşabilirsiniz.</p>
+            </div>
+        }
+
+        <aside class="contact-aside" aria-label="Doğrudan iletişim">
+            <ul class="aside-list" data-reveal>
+                <li><span>Telefon</span><a href="tel:@contact.Phone">@contact.PhoneDisplay</a></li>
+                <li><span>WhatsApp</span><a href="@waLink" target="_blank" rel="noopener">Hazır mesajla aç</a></li>
+                <li><span>E-posta</span><a href="mailto:@contact.Email">@contact.Email</a></li>
+                <li><span>Konum</span><span>@contact.Address</span></li>
+                @foreach (var soc in site.Socials.OrderBy(x => x.Order))
+                {
+                    <li><span>@soc.Label</span><a href="@soc.Url" target="_blank" rel="noopener">@((soc.Url ?? "").Replace("https://", "").Replace("http://", "").TrimEnd('/'))</a></li>
+                }
+            </ul>
+            @if (!string.IsNullOrWhiteSpace(contact.MapEmbedUrl))
+            {
+                <div class="mapbox" data-reveal>
+                    <iframe src="@contact.MapEmbedUrl" title="Konum haritası: @contact.Address" loading="lazy"
+                            referrerpolicy="no-referrer-when-downgrade"></iframe>
+                </div>
+            }
+        </aside>
+    </div>
+</section>
+
+@* ============================================================== SSS *@
+@if (faqs.Count > 0)
+{
+    <section class="sec sec--surface" id="sss" aria-labelledby="sss-title">
+        <div class="shell split2">
+            <div class="sec__head">
+                <span class="label" data-reveal><span class="label__num">03</span><span aria-hidden="true">—</span><span>S.S.S.</span></span>
+                <h2 class="h2" id="sss-title" data-reveal>Sık sorulan sorular</h2>
+            </div>
+            <div class="faq">
+                @foreach (var item in faqs)
+                {
+                    <details data-reveal>
+                        <summary><span>@item.Question</span> @Icons.Svg("plus", "icon", 20)</summary>
+                        <p>@item.Answer</p>
+                    </details>
+                }
+            </div>
+        </div>
+    </section>
+}

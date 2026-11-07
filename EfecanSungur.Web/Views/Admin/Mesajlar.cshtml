@@ -1,0 +1,94 @@
+@model SiteContent
+@{
+    ViewData["Title"] = "Mesajlar";
+    var messages = Model.Messages;
+    var unread = messages.Count(m => !m.IsRead);
+}
+
+<div class="ph">
+    <div>
+        <span class="ph__eyebrow">İletişim formu</span>
+        <h1>Gelen Mesajlar</h1>
+        <p>@messages.Count mesaj@(unread > 0 ? $", {unread} tanesi okunmamış" : ""). Bir satıra dokunarak mesajın tamamını açabilirsiniz.</p>
+    </div>
+    <div class="ph__actions">
+        <a class="b b--ghost" href="/admin">@Icons.Svg("back", "icon", 17) <span>Panele dön</span></a>
+        @if (messages.Any())
+        {
+            <form method="post" action="/admin/mesajlar/temizle"
+                  data-confirm="TÜM mesajlar silinecek. Bu işlem geri alınamaz. Emin misiniz?">
+                @Html.AntiForgeryToken()
+                <button class="b b--danger" type="submit">
+                    @Icons.Svg("trash", "icon", 17) <span>Tümünü sil</span>
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+<section class="panel">
+    @if (!messages.Any())
+    {
+        <div class="empty">
+            <div class="empty__icon">@Icons.Svg("inbox", "icon", 24)</div>
+            <h3>Gelen kutusu boş</h3>
+            <p>İletişim sayfasındaki form doldurulduğunda mesajlar burada birikir. Form ayarlarını “İletişim Bilgileri” bölümünden yönetebilirsiniz.</p>
+            <a class="b b--ghost" href="/admin/bolum/iletisim">
+                @Icons.Svg("settings", "icon", 16) <span>Form ayarları</span>
+            </a>
+        </div>
+    }
+    else
+    {
+        foreach (var m in messages)
+        {
+            var waNumber = new string((m.Phone ?? "").Where(char.IsDigit).ToArray());
+            <article class="msg @(m.IsRead ? "" : "is-unread")">
+                <div class="msg__head">
+                    <span class="msg__dot @(m.IsRead ? "msg__dot--read" : "")" aria-hidden="true"></span>
+                    <div class="msg__who">
+                        <strong>@m.Name @(!m.IsRead ? "" : "")</strong>
+                        <span>@m.Subject · @m.Email</span>
+                    </div>
+                    <span class="msg__date">@m.CreatedAtDisplay</span>
+                    @Icons.Svg("chevron-down", "icon", 16)
+                </div>
+
+                <div class="msg__body">
+                    <div class="msg__text">@m.Message</div>
+                    <div class="msg__meta">
+                        <a class="b b--ghost b--sm" href="mailto:@m.Email?subject=@Uri.EscapeDataString("Yanıt: " + m.Subject)">
+                            @Icons.Svg("mail", "icon", 15) <span>E-posta ile yanıtla</span>
+                        </a>
+                        @if (!string.IsNullOrWhiteSpace(m.Phone))
+                        {
+                            <a class="b b--ghost b--sm" href="tel:@m.Phone">
+                                @Icons.Svg("phone", "icon", 15) <span>@m.Phone</span>
+                            </a>
+                            @if (waNumber.Length >= 10)
+                            {
+                                <a class="b b--ghost b--sm" href="https://wa.me/@waNumber" target="_blank" rel="noopener">
+                                    @Icons.Svg("whatsapp", "icon", 15) <span>WhatsApp</span>
+                                </a>
+                            }
+                        }
+                        <form method="post" action="/admin/mesajlar/@m.Id/okundu">
+                            @Html.AntiForgeryToken()
+                            <button class="b b--ghost b--sm" type="submit">
+                                @Icons.Svg("check", "icon", 15)
+                                <span>@(m.IsRead ? "Okunmadı işaretle" : "Okundu işaretle")</span>
+                            </button>
+                        </form>
+                        <form method="post" action="/admin/mesajlar/@m.Id/sil"
+                              data-confirm="Bu mesaj silinecek. Onaylıyor musunuz?">
+                            @Html.AntiForgeryToken()
+                            <button class="b b--danger b--sm" type="submit">
+                                @Icons.Svg("trash", "icon", 15) <span>Sil</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </article>
+        }
+    }
+</section>

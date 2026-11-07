@@ -1,0 +1,99 @@
+@model SiteContent
+@{
+    // Tüm arama motoru / sosyal paylaşım meta etiketleri tek yerde.
+    // Değerleri denetleyiciler verir (Services/SeoText.cs → SeoMeta.ApplyTo):
+    //   Title (tam başlık, ≤60), Description (120–160), Canonical (yol ya da mutlak),
+    //   OgImage (yol ya da mutlak), OgImageAlt, OgImageWidth, OgImageHeight, OgType,
+    //   NoIndex / Robots (robots değeri — panel ve hata sayfaları için).
+    var s = Model.Settings;
+    const string KnownVerification = "jX7nH7wTmZMoS2bw7IZLrNkMEQFqNIoLcTqLNPQ_3tM";
+
+    var req = ViewContext.HttpContext.Request;
+    var host = (s.CanonicalHost ?? "").Trim().TrimEnd('/');
+    if (string.IsNullOrEmpty(host)) { host = $"{req.Scheme}://{req.Host}"; }
+
+    string Absolute(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return "";
+        if (value.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+            || value.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) return value;
+        if (value.StartsWith("//")) return "https:" + value;
+        return host + (value.StartsWith('/') ? value : "/" + value);
+    }
+
+    string CanonicalPath(string p)
+    {
+        if (string.IsNullOrWhiteSpace(p) || p == "/") return "/";
+        p = p.Trim();
+        if (p.StartsWith("http", StringComparison.OrdinalIgnoreCase)) return p.TrimEnd('/');
+        return "/" + p.Trim('/').ToLowerInvariant();
+    }
+
+    var title = ViewData["Title"] as string;
+    if (string.IsNullOrWhiteSpace(title)) { title = $"{s.OwnerName} — {s.Role}"; }
+    var description = ViewData["Description"] as string;
+    if (string.IsNullOrWhiteSpace(description)) { description = s.MetaDescription; }
+
+    var robots = ViewData["Robots"] as string ?? ViewData["NoIndex"] as string
+                 ?? "index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1";
+    var indexable = !robots.Contains("noindex", StringComparison.OrdinalIgnoreCase);
+
+    var canonicalValue = ViewData["Canonical"] as string;
+    var canonical = Absolute(CanonicalPath(string.IsNullOrWhiteSpace(canonicalValue) ? (req.Path.Value ?? "/") : canonicalValue));
+
+    var ogType = ViewData["OgType"] as string ?? "website";
+    var ogImage = Absolute(ViewData["OgImage"] as string ?? "/img/og/og-efecan-sungur.jpg");
+    var ogImageAlt = ViewData["OgImageAlt"] as string;
+    if (string.IsNullOrWhiteSpace(ogImageAlt)) { ogImageAlt = title; }
+    var ogW = ViewData["OgImageWidth"] is int w ? w : 0;
+    var ogH = ViewData["OgImageHeight"] is int h ? h : 0;
+    var ogMime = ogImage.EndsWith(".png", StringComparison.OrdinalIgnoreCase) ? "image/png"
+               : ogImage.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) ? "image/webp" : "image/jpeg";
+
+    var verification = string.IsNullOrWhiteSpace(s.GoogleVerification) ? KnownVerification : s.GoogleVerification.Trim();
+    var themeColor = ThemeColors.Hex(Model.Theme?.Night, "#0B0D11");
+}
+<title>@title</title>
+<meta name="description" content="@description" />
+@if (!string.IsNullOrWhiteSpace(s.MetaKeywords))
+{
+    <meta name="keywords" content="@s.MetaKeywords" />
+}
+<meta name="author" content="@s.OwnerName" />
+<meta name="robots" content="@robots" />
+<meta name="google-site-verification" content="@verification" />
+<meta name="theme-color" content="@themeColor" />
+@if (indexable)
+{
+    <link rel="canonical" href="@canonical" />
+    <link rel="alternate" hreflang="tr" href="@canonical" />
+    <link rel="alternate" hreflang="x-default" href="@canonical" />
+}
+<link rel="alternate" type="text/plain" href="/llms.txt" title="LLM özeti" />
+<link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+<meta property="og:type" content="@ogType" />
+<meta property="og:site_name" content="@s.SiteName" />
+<meta property="og:title" content="@title" />
+<meta property="og:description" content="@description" />
+<meta property="og:url" content="@canonical" />
+<meta property="og:locale" content="tr_TR" />
+<meta property="og:image" content="@ogImage" />
+<meta property="og:image:secure_url" content="@ogImage" />
+<meta property="og:image:type" content="@ogMime" />
+@if (ogW > 0 && ogH > 0)
+{
+    <meta property="og:image:width" content="@ogW" />
+    <meta property="og:image:height" content="@ogH" />
+}
+<meta property="og:image:alt" content="@ogImageAlt" />
+@if (ogType == "profile")
+{
+    <meta property="profile:first_name" content="@(s.OwnerName.Split(' ').FirstOrDefault())" />
+    <meta property="profile:last_name" content="@(s.OwnerName.Split(' ').LastOrDefault())" />
+}
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="@title" />
+<meta name="twitter:description" content="@description" />
+<meta name="twitter:image" content="@ogImage" />
+<meta name="twitter:image:alt" content="@ogImageAlt" />

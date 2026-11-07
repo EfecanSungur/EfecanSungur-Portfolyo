@@ -1,0 +1,73 @@
+﻿@model EfecanSungur.Web.Views.Shared.PictureModel
+@inject Microsoft.AspNetCore.Hosting.IWebHostEnvironment Env
+@{
+    // Görselin yanında tools/images.py'nin ürettiği "-640.webp", "-1080.webp",
+    // "-1600.webp" kardeşleri diskte varsa srcset'e eklenir. Yoksa (ör. panelden
+    // yüklenen bir dosya) düz <img> basılır — her iki durumda da görsel çalışır.
+    var src = Model.Src ?? "";
+    var sources = new List<string>();
+    var isLocal = src.StartsWith('/') && !src.StartsWith("//");
+    // Gerçek piksel boyutu dosyadan okunabiliyorsa (Services/ImageInfo) o basılır;
+    // okunamazsa çağıranın verdiği varsayılan boyut kullanılır.
+    var width = Model.Width;
+    var height = Model.Height;
+
+    if (isLocal && !string.IsNullOrEmpty(Env.WebRootPath))
+    {
+        var clean = src.Split('?', '#')[0];
+        var dot = clean.LastIndexOf('.');
+        var stem = dot > clean.LastIndexOf('/') ? clean[..dot] : clean;
+        var root = System.IO.Path.GetFullPath(Env.WebRootPath);
+        string? Physical(string url)
+        {
+            var full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root,
+                Uri.UnescapeDataString(url).TrimStart('/').Replace('/', System.IO.Path.DirectorySeparatorChar)));
+            return full.StartsWith(root, StringComparison.OrdinalIgnoreCase) ? full : null;
+        }
+
+        var own = Physical(clean) is { } op ? ImageInfo.Read(op) : null;
+        if (own is { } o) { width = o.W; height = o.H; }
+
+        var maxSibling = 0;
+        foreach (var w in new[] { 640, 1080, 1600 })
+        {
+            var candidate = $"{stem}-{w}.webp";
+            var physical = Physical(candidate);
+            if (physical != null && System.IO.File.Exists(physical))
+            {
+                var real = ImageInfo.Read(physical)?.W ?? w;
+                sources.Add($"{candidate} {real}w");
+                maxSibling = Math.Max(maxSibling, real);
+            }
+        }
+
+        // Asıl dosya zaten webp ise (ör. referans ekran görüntüleri) en büyük aday
+        // odur: yalnızca "-640" kardeşi olan bir görsel büyük ekranda bulanık kalmasın.
+        if (sources.Count > 0 && clean.EndsWith(".webp", StringComparison.OrdinalIgnoreCase) && width > maxSibling)
+        {
+            sources.Add($"{clean} {width}w");
+        }
+    }
+
+    var loading = Model.Eager ? "eager" : "lazy";
+    var high = Model.Eager && Model.HighPriority;
+    var priority = high ? "high" : null;
+    var decoding = high ? "sync" : "async";
+}
+@if (string.IsNullOrWhiteSpace(src))
+{
+    return;
+}
+@if (sources.Count > 0)
+{
+    <picture>
+        <source type="image/webp" srcset="@string.Join(", ", sources)" sizes="@Model.Sizes" />
+        <img class="@Model.CssClass" src="@src" alt="@Model.Alt" width="@width" height="@height"
+             loading="@loading" decoding="@decoding" fetchpriority="@priority" />
+    </picture>
+}
+else
+{
+    <img class="@Model.CssClass" src="@src" alt="@Model.Alt" width="@width" height="@height"
+         loading="@loading" decoding="@decoding" fetchpriority="@priority" />
+}

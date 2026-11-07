@@ -1,0 +1,263 @@
+@model SiteContent
+@{
+    // SEO başlığı/açıklaması denetleyicide (ViewData) belirlenir — burada değil.
+    var hero = Model.Hero;
+    var contact = Model.Contact;
+    var s = Model.Settings;
+    var waLink = $"https://wa.me/{contact.WhatsAppNumber}?text={Uri.EscapeDataString(contact.WhatsAppMessage ?? "")}";
+    var city = (contact.Address ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).FirstOrDefault() ?? "";
+
+    var refs = s.ShowReferences
+        ? Model.References.Where(r => r.Visible && !string.IsNullOrWhiteSpace(r.Slug)).OrderBy(r => r.Order).ToList()
+        : new List<ReferenceItem>();
+    var featured = refs.Where(r => r.Featured).Take(4).ToList();
+    if (featured.Count == 0) { featured = refs.Take(4).ToList(); }
+
+    // Statik ad satırı (kayan şerit DEĞİL): panelde "Kayan şerit metni" alanı
+    // (• ile ayrılmış) doluysa o; boşsa referanslardaki müşteri adları.
+    var rowItems = (hero.MarqueeText ?? "").Split('•', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+    if (rowItems.Count == 0)
+    {
+        rowItems = refs.Select(r => (r.Client ?? "").Trim()).Where(c => c.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+    }
+    var eyebrow = !string.IsNullOrWhiteSpace(hero.Eyebrow) && !hero.Eyebrow.Trim().Equals(s.OwnerName?.Trim(), StringComparison.OrdinalIgnoreCase)
+        ? hero.Eyebrow.Trim()
+        : s.Role + (city.Length > 0 ? " · " + city : "");
+
+    // Öne çıkanlar: zaman çizgisindeki Huawei ve Salurian adımlarından beslenir (panelden düzenlenir).
+    // Huawei kartı, metninde adı geçen görünür referansa bağlanır ("Huawei Türkiye uygulaması" = Huawei Hedef Takip,
+    // Efecan'ın teyidi 24 Eki 2026). Referans gizliyse / bölüm kapalıysa kart /hakkinda'ya gider.
+    var tlHuawei = Model.Timeline.OrderBy(x => x.Order).FirstOrDefault(x => (x.Title ?? "").Contains("Huawei", StringComparison.OrdinalIgnoreCase));
+    var huaweiRef = tlHuawei is null ? null : RefLinks.FirstMentioned(Model, tlHuawei.Title + " " + tlHuawei.Description);
+    var tlSalurian = Model.Timeline.OrderBy(x => x.Order).FirstOrDefault(x => (x.Title ?? "").Contains("Salurian", StringComparison.OrdinalIgnoreCase));
+    var salurianUrl = Model.Socials.Select(x => x.Url ?? "")
+        .FirstOrDefault(u => u.Contains("salurian.com", StringComparison.OrdinalIgnoreCase)) ?? "https://salurian.com";
+
+    var faqs = s.ShowFaq ? Model.Faq.OrderBy(x => x.Order).Take(3).ToList() : new List<FaqItem>();
+    var stats = s.ShowStats ? Model.Stats.OrderBy(x => x.Order).ToList() : new List<StatItem>();
+
+    // Bölüm numaraları yalnızca gösterilen bölümlere verilir.
+    var n = 0;
+    string Next() => (++n).ToString("00");
+}
+
+@* ================================================================ HERO *@
+<section class="hero dark texture" aria-labelledby="hero-name">
+    <div class="shell hero__grid">
+        <div class="hero__copy">
+            <span class="label hero__eyebrow" data-reveal>
+                <span>@eyebrow</span>
+            </span>
+            <h1 class="hero__name" id="hero-name">@s.OwnerName</h1>
+            <p class="hero__tagline">
+                @hero.TitleTop
+                @if (!string.IsNullOrWhiteSpace(hero.TitleAccent))
+                {
+                    <em class="serif">@hero.TitleAccent</em>
+                }
+                @hero.TitleBottom
+            </p>
+            @if (!string.IsNullOrWhiteSpace(hero.Subtitle))
+            {
+                <p class="hero__sub">@hero.Subtitle</p>
+            }
+            <div class="btns hero__cta">
+                @* Referanslar bölümü kapalıyken /referanslar 404 döner: o adrese giden buton basılmaz. *@
+                @if (!string.IsNullOrWhiteSpace(hero.PrimaryCtaText)
+                     && (s.ShowReferences || !(hero.PrimaryCtaUrl ?? "").TrimEnd('/').Equals("/referanslar", StringComparison.OrdinalIgnoreCase)))
+                {
+                    <a class="btn btn--light" href="@hero.PrimaryCtaUrl">
+                        <span>@hero.PrimaryCtaText</span> @Icons.Svg("arrow", "icon", 18)
+                    </a>
+                }
+                @if (!string.IsNullOrWhiteSpace(hero.SecondaryCtaText))
+                {
+                    <a class="btn btn--line" href="@hero.SecondaryCtaUrl"><span>@hero.SecondaryCtaText</span></a>
+                }
+            </div>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(hero.ImagePath))
+        {
+            <figure class="figure hero__fig">
+                <div class="frame">
+                    @await Html.PartialAsync("_Picture", new PictureModel(hero.ImagePath, hero.ImageAlt, 1600, 2000,
+                        "(max-width: 860px) 92vw, (max-width: 1280px) 40vw, 520px", Eager: true))
+                </div>
+                <figcaption class="figure__cap">
+                    <span>@hero.ImageAlt</span>
+                    @if (!string.IsNullOrWhiteSpace(contact.Address)) { <span>@contact.Address</span> }
+                </figcaption>
+            </figure>
+        }
+
+        @if (stats.Count > 0)
+        {
+            <dl class="proof">
+                @foreach (var stat in stats)
+                {
+                    @* Sunucu her zaman GERÇEK değeri basar. Yıl gibi değerler (1900–2100)
+                       asla saydırılmaz; JS çalışmazsa doğru sayı görünmeye devam eder. *@
+                    var numeric = int.TryParse(stat.Value, out var v);
+                    var isYear = numeric && v >= 1900 && v <= 2100;
+                    <div class="proof__item">
+                        <dt>@stat.Label</dt>
+                        <dd>
+                            @if (numeric && !isYear)
+                            {
+                                <span data-count="@v">@v</span>
+                            }
+                            else
+                            {
+                                <span>@stat.Value</span>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(stat.Suffix)) { <sup>@stat.Suffix</sup> }
+                        </dd>
+                    </div>
+                }
+            </dl>
+        }
+    </div>
+</section>
+
+@* ======================================================= MARKA ADLARI (statik) *@
+@if (rowItems.Count > 0)
+{
+    <div class="clients dark" role="region" aria-labelledby="clients-label">
+        <div class="shell clients__inner">
+            <span class="label" id="clients-label">Salurian Company referansları</span>
+            <ul class="clients__list">
+                @foreach (var name in rowItems)
+                {
+                    <li>@name</li>
+                }
+            </ul>
+        </div>
+    </div>
+}
+
+@* ======================================================== SEÇİLİ İŞLER *@
+@if (featured.Count > 0)
+{
+    <section class="sec sec--paper" aria-labelledby="works-title">
+        <div class="shell">
+            <div class="sec__head">
+                <span class="label" data-reveal><span class="label__num">@Next()</span><span aria-hidden="true">—</span><span>Referanslar</span></span>
+                <h2 class="h2" id="works-title" data-reveal>Seçili işler</h2>
+                <p class="sec__intro" data-reveal>Salurian Company referanslarından bir seçki.</p>
+                <a class="link-arrow sec__more" href="/referanslar" data-reveal>
+                    <span>Tüm referanslar (@refs.Count)</span> @Icons.Svg("arrow", "icon", 18)
+                </a>
+            </div>
+            <div class="works">
+                @foreach (var r in featured)
+                {
+                    @await Html.PartialAsync("_WorkCard", r, new ViewDataDictionary(ViewData) { ["H"] = "h3", ["Sizes"] = "(max-width: 600px) 92vw, (max-width: 860px) 46vw, 620px" })
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@* ======================================================== NE YAPIYORUM *@
+@if (s.ShowExpertise && Model.Expertise.Any())
+{
+    <section class="sec sec--surface" aria-labelledby="x-title">
+        <div class="shell">
+            <div class="sec__head">
+                <span class="label" data-reveal><span class="label__num">@Next()</span><span aria-hidden="true">—</span><span>Hizmetler</span></span>
+                <h2 class="h2" id="x-title" data-reveal>Ne yapıyorum</h2>
+            </div>
+            <ol class="xgrid">
+                @{ var xi = 0; }
+                @foreach (var item in Model.Expertise.OrderBy(x => x.Order))
+                {
+                    xi++;
+                    <li class="xcell" data-reveal>
+                        <div class="xcell__top">
+                            <span class="label"><span class="label__num">@xi.ToString("00")</span></span>
+                            @Icons.Svg(item.Icon, "icon", 22)
+                        </div>
+                        <h3 class="h3 xcell__title">@item.Title</h3>
+                        <p class="xcell__text">@item.Description</p>
+                    </li>
+                }
+            </ol>
+        </div>
+    </section>
+}
+
+@* ================================================ HUAWEI + SALURIAN *@
+@if (tlHuawei is not null || tlSalurian is not null)
+{
+    <section class="sec sec--deep" aria-labelledby="duo-title">
+        <div class="shell">
+            <div class="sec__head">
+                <span class="label" data-reveal><span class="label__num">@Next()</span><span aria-hidden="true">—</span><span>Öne çıkanlar</span></span>
+                <h2 class="h2" id="duo-title" data-reveal>İki dönüm noktası</h2>
+            </div>
+            <div class="duo">
+                @if (tlHuawei is not null)
+                {
+                    <article class="duo__card" data-reveal>
+                        <span class="label"><span class="label__num">@tlHuawei.Year</span></span>
+                        <h3 class="duo__title">@tlHuawei.Title</h3>
+                        <p class="duo__text">@tlHuawei.Description</p>
+                        @if (huaweiRef is not null)
+                        {
+                            <a class="link-arrow" href="@SeoText.ReferencePath(huaweiRef)"><span>Projeyi incele</span> @Icons.Svg("arrow", "icon", 18)</a>
+                        }
+                        else
+                        {
+                            <a class="link-arrow" href="/hakkinda"><span>Hikâyenin tamamı</span> @Icons.Svg("arrow", "icon", 18)</a>
+                        }
+                    </article>
+                }
+                @if (tlSalurian is not null)
+                {
+                    <article class="duo__card" data-reveal>
+                        <span class="label"><span class="label__num">@tlSalurian.Year</span></span>
+                        <h3 class="duo__title">@tlSalurian.Title</h3>
+                        <p class="duo__text">@tlSalurian.Description</p>
+                        <a class="link-arrow" href="@salurianUrl" target="_blank" rel="noopener"><span>salurian.com</span> @Icons.Svg("arrow-up-right", "icon", 18)</a>
+                    </article>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@* ========================================================== KRONOLOJİ *@
+@if (s.ShowTimeline && Model.Timeline.Any())
+{
+    @await Html.PartialAsync("_Timeline", Model, new ViewDataDictionary(ViewData) { ["SecNum"] = Next(), ["SecTitle"] = "Yolculuk" })
+}
+
+@* ========================================================= SSS ÖNİZLEME *@
+@if (faqs.Count > 0)
+{
+    <section class="sec sec--paper" aria-labelledby="faq-title">
+        <div class="shell split2">
+            <div class="sec__head">
+                <span class="label" data-reveal><span class="label__num">@Next()</span><span aria-hidden="true">—</span><span>S.S.S.</span></span>
+                <h2 class="h2" id="faq-title" data-reveal>Sık sorulanlar</h2>
+                <a class="link-arrow sec__more" href="/iletisim#sss" data-reveal>
+                    <span>Tüm sorular</span> @Icons.Svg("arrow", "icon", 18)
+                </a>
+            </div>
+            <div class="faq">
+                @foreach (var item in faqs)
+                {
+                    <details data-reveal>
+                        <summary><span>@item.Question</span> @Icons.Svg("plus", "icon", 20)</summary>
+                        <p>@item.Answer</p>
+                    </details>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+@* =============================================================== CTA *@
+@await Html.PartialAsync("_CtaBand", Model, new ViewDataDictionary(ViewData) { ["CtaNum"] = Next() })

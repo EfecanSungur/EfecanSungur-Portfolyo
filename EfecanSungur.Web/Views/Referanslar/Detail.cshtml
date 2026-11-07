@@ -1,0 +1,177 @@
+@model ReferenceDetailViewModel
+@{
+    // SEO başlığı/açıklaması ve içerik haritası denetleyicide (ViewData) belirlenir.
+    var r = Model.Item;
+    var cat = (r.Category ?? "").Trim().ToLowerInvariant();
+    var catLabel = cat switch { "web" => "Web", "mobil" => "Mobil", "masaustu" => "Masaüstü", _ => "Diğer" };
+    var live = string.IsNullOrWhiteSpace(r.Status) || r.Status.Trim().Equals("Yayında", StringComparison.OrdinalIgnoreCase);
+    var name = string.IsNullOrWhiteSpace(r.Client) ? r.Title : r.Client;
+    var alt = string.IsNullOrWhiteSpace(r.ImageAlt) ? $"{r.Title} ekran görüntüsü" : r.ImageAlt;
+    var body = (r.Body ?? new List<string>()).Where(p => !string.IsNullOrWhiteSpace(p)).ToList();
+    var stack = (r.Stack ?? new List<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+    var highlights = (r.Highlights ?? new List<string>()).Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
+    bool IsHttp(string? u) => !string.IsNullOrWhiteSpace(u)
+        && (u.StartsWith("https://", StringComparison.OrdinalIgnoreCase) || u.StartsWith("http://", StringComparison.OrdinalIgnoreCase));
+
+    var fallbackCrumbs = new List<BreadcrumbItem>
+    {
+        new("Ana Sayfa", "/"),
+        new("Referanslar", "/referanslar"),
+        new(r.Title, $"/referanslar/{r.Slug}")
+    };
+}
+
+@* ======================================================= SAYFA BAŞI *@
+<section class="phead">
+    <div class="shell">
+        @await Html.PartialAsync("_Crumbs", fallbackCrumbs)
+        <div class="case__meta">
+            <span class="label"><span class="label__num">@(string.IsNullOrWhiteSpace(r.Kind) ? catLabel : r.Kind)</span></span>
+            @if (!string.IsNullOrWhiteSpace(r.Client)) { <span class="label">@r.Client</span> }
+            @if (!string.IsNullOrWhiteSpace(r.Year)) { <span class="label">@r.Year</span> }
+            @if (!string.IsNullOrWhiteSpace(r.Status))
+            {
+                <span class="badge @(live ? "badge--live" : "badge--wip")">@r.Status</span>
+            }
+        </div>
+        <h1 class="h1">@r.Title</h1>
+        @if (!string.IsNullOrWhiteSpace(r.Summary))
+        {
+            <p class="lead phead__lead">@r.Summary</p>
+        }
+
+        <div class="case__cover">
+            <div class="frame">
+                <div class="work__media">
+                    @if (!string.IsNullOrWhiteSpace(r.ImagePath))
+                    {
+                        @await Html.PartialAsync("_Picture", new PictureModel(r.ImagePath, alt, 1600, 800,
+                            "(max-width: 860px) 92vw, 1260px", Eager: true))
+                    }
+                    else
+                    {
+                        <div class="cover-ph" aria-hidden="true">
+                            <div class="cover-ph__top">
+                                <span class="label">@catLabel</span>
+                                @if (!string.IsNullOrWhiteSpace(r.Year)) { <span class="label">@r.Year</span> }
+                            </div>
+                            <span class="cover-ph__name">@name</span>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+@* =========================================================== GÖVDE *@
+<section class="sec sec--surface" aria-label="Proje ayrıntıları">
+    <div class="shell case__grid">
+        <div class="prose">
+            @if (body.Count > 0)
+            {
+                for (var i = 0; i < body.Count; i++)
+                {
+                    <p class="@(i == 0 ? "prose__first" : null)" data-reveal>@body[i]</p>
+                }
+            }
+            else if (!string.IsNullOrWhiteSpace(r.Summary))
+            {
+                <p class="prose__first">@r.Summary</p>
+            }
+        </div>
+
+        <aside class="case__aside" aria-label="Proje künyesi">
+            @if (!string.IsNullOrWhiteSpace(r.Role))
+            {
+                <div class="aside__block">
+                    @* Rol, Salurian'daki genel rol paylaşımından gelir (proje bazında teyit edilmiş bir döküm değil);
+                       Efecan'ın kendi projesinde (OwnProject) rol o projeye özeldir. *@
+                    <h2 class="label">@(r.OwnProject ? "Rolüm" : "Salurian'daki rolüm")</h2>
+                    <p class="aside__role">@r.Role</p>
+                </div>
+            }
+            @if (stack.Count > 0)
+            {
+                <div class="aside__block">
+                    <h2 class="label">Teknolojiler</h2>
+                    <ul class="chips">
+                        @foreach (var x in stack) { <li class="chip">@x</li> }
+                    </ul>
+                </div>
+            }
+            @if (highlights.Count > 0)
+            {
+                <div class="aside__block">
+                    <h2 class="label">Öne çıkanlar</h2>
+                    <ul class="hl-list">
+                        @foreach (var h in highlights) { <li>@h</li> }
+                    </ul>
+                </div>
+            }
+
+            @if (IsHttp(r.LiveUrl) || IsHttp(r.SourceUrl))
+            {
+                <div class="case__actions">
+                    @if (IsHttp(r.LiveUrl))
+                    {
+                        <a class="btn btn--signal btn--block" href="@r.LiveUrl" target="_blank" rel="noopener">
+                            <span>Canlı siteyi ziyaret et</span> @Icons.Svg("arrow-up-right", "icon", 18)
+                        </a>
+                    }
+                    @if (IsHttp(r.SourceUrl))
+                    {
+                        <a class="btn btn--line btn--block" href="@r.SourceUrl" target="_blank" rel="noopener">
+                            <span>Salurian Company sayfası</span> @Icons.Svg("arrow-up-right", "icon", 18)
+                        </a>
+                    }
+                </div>
+            }
+
+            @* Salurian 2026'da kuruldu: daha eski tarihli bir işe "Salurian ekibiyle geliştirildi" denmez. *@
+            <p class="case__credit">@(r.OwnProject && SeoText.PredatesSalurian(r)
+                ? "Salurian Company'yi kurmadan önce geliştirdiğim bir proje; bugün Salurian Company referansları arasında yer alıyor."
+                : r.OwnProject || SeoText.PredatesSalurian(r)
+                    ? "Bu proje Salurian Company referansları arasında yer alıyor."
+                    : "Bu proje Salurian Company ekibiyle geliştirildi.")</p>
+        </aside>
+    </div>
+</section>
+
+@* =========================================================== GEZİNME *@
+<nav class="sec sec--tight sec--surface sec--flush" aria-label="Diğer projeler">
+    <div class="shell">
+        <div class="pager">
+            @if (Model.Previous is not null)
+            {
+                <a class="pager__cell pager__cell--prev" href="/referanslar/@Model.Previous.Slug" rel="prev">
+                    <span class="label">← Önceki proje</span>
+                    <span class="pager__title">@Model.Previous.Title</span>
+                </a>
+            }
+            else
+            {
+                <span class="pager__cell pager__cell--prev" aria-hidden="true"></span>
+            }
+
+            <a class="pager__cell pager__cell--all" href="/referanslar">
+                <span class="label">Tümü</span>
+                <span class="pager__title">Referanslar</span>
+            </a>
+
+            @if (Model.Next is not null)
+            {
+                <a class="pager__cell pager__cell--next" href="/referanslar/@Model.Next.Slug" rel="next">
+                    <span class="label">Sonraki proje →</span>
+                    <span class="pager__title">@Model.Next.Title</span>
+                </a>
+            }
+            else
+            {
+                <span class="pager__cell pager__cell--next" aria-hidden="true"></span>
+            }
+        </div>
+    </div>
+</nav>
+
+@await Html.PartialAsync("_CtaBand", Model.Content, new ViewDataDictionary(ViewData) { ["CtaNum"] = "" })

@@ -1,0 +1,412 @@
+/* ==========================================================================
+   efecansungur.com — MOBİL KATMAN (≤860px)
+   --------------------------------------------------------------------------
+   Masaüstünün küçültülmüş hâli değil, ayrı bir kompozisyon:
+   - kendi üst barı (.mhdr) + tam ekran çekmece (.drawer)
+   - sabit alt sekme barı (.tabbar): Ana Sayfa · Hakkında · Referanslar · İletişim · WhatsApp
+   - tek kolon akış, yığılmış hero (isim → slogan → CTA → fotoğraf → sayılar)
+   - tüm dokunma hedefleri ≥ 44px, env(safe-area-inset-*) desteği
+   - 360px'te yatay kaydırma yok
+   Layout bu dosyayı media="(max-width: 860px)" ile yükler; kurallar ayrıca
+   aynı sorgu ile sarılıdır (media niteliği kaldırılsa bile güvenli).
+   ========================================================================== */
+
+@media (max-width: 860px) {
+
+    :root {
+        --hdr-h: 60px;
+        --gutter: 20px;
+        --tab-h: 62px;
+    }
+
+    /* Sabit alt sekme barının yeri body'de DEĞİL footer'ın içinde ayrılır: alt barın
+       arkasında kalan şerit kâğıt değil gece rengi olur (tam sayfa görüntü, iOS esneme). */
+    body { font-size: 1rem; }
+
+    .shell { padding-inline: max(var(--gutter), env(safe-area-inset-left)); }
+
+    /* --------------------------------------------------------- üst bar */
+
+    .dhdr, .wafab { display: none; }
+
+    .mhdr {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        height: calc(var(--hdr-h) + env(safe-area-inset-top));
+        padding: env(safe-area-inset-top) max(12px, env(safe-area-inset-right)) 0 max(var(--gutter), env(safe-area-inset-left));
+        background: var(--paper);
+        border-bottom: 1px solid var(--line);
+        transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+    }
+    .mhdr.hdr--over { position: absolute; background: transparent; border-bottom-color: transparent; }
+    html.js .mhdr.hdr--over { position: fixed; }
+    .mhdr.hdr--over.is-solid { background: var(--night); border-bottom-color: var(--night-line); }
+
+    .brand--m { gap: 10px; }
+    .brand--m .mono--mark { width: 38px; height: 28.5px; }
+    .brand--m .brand__word { font-size: .75rem; letter-spacing: .18em; }
+
+    .burger {
+        position: relative;
+        width: 48px;
+        height: 48px;
+        border: 0;
+        background: transparent;
+        cursor: pointer;
+        border-radius: var(--radius);
+    }
+    .burger span {
+        position: absolute;
+        left: 13px; right: 13px;
+        height: 1.5px;
+        background: currentColor;
+        transition: transform var(--t) var(--ease), top var(--t) var(--ease);
+    }
+    .burger span:nth-child(1) { top: 19px; }
+    .burger span:nth-child(2) { top: 27px; }
+
+    /* -------------------------------------------------------- çekmece */
+
+    .drawer {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: block;
+        background: var(--night);
+        color: var(--on-night);
+        --focus: var(--signal-soft);
+        opacity: 0;
+        transition: opacity 220ms var(--ease);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .drawer[hidden] { display: none; }
+    .drawer.is-open { opacity: 1; }
+    body.drawer-open { overflow: hidden; }
+
+    .drawer__panel {
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+        padding: calc(env(safe-area-inset-top) + 8px) max(var(--gutter), env(safe-area-inset-right)) calc(28px + env(safe-area-inset-bottom)) max(var(--gutter), env(safe-area-inset-left));
+    }
+    .drawer__top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: var(--hdr-h);
+        margin-right: -8px;
+    }
+    .drawer__top .label { color: var(--on-night-muted); }
+    .drawer__close {
+        display: grid;
+        place-items: center;
+        width: 48px; height: 48px;
+        border: 0;
+        background: transparent;
+        color: var(--on-night);
+        cursor: pointer;
+    }
+
+    .drawer__nav {
+        list-style: none;
+        margin-top: 24px;
+        border-top: 1px solid var(--night-line);
+    }
+    .drawer__nav a {
+        display: grid;
+        grid-template-columns: 44px minmax(0, 1fr) auto;
+        align-items: center;
+        min-height: 72px;
+        border-bottom: 1px solid var(--night-line);
+        text-decoration: none;
+        color: var(--on-night);
+    }
+    .drawer__num {
+        font-family: var(--font-mono);
+        font-size: .75rem;
+        letter-spacing: .08em;
+        color: var(--signal-soft);
+    }
+    .drawer__text {
+        font-family: var(--font-display);
+        font-size: 1.875rem;
+        font-weight: 600;
+        letter-spacing: -.035em;
+    }
+    .drawer__nav a .icon { color: var(--on-night-muted); }
+    .drawer__nav a[aria-current="page"] .drawer__text { color: var(--signal-soft); }
+
+    .drawer__foot { margin-top: auto; padding-top: 40px; display: grid; gap: 18px; }
+    .drawer__meta { list-style: none; display: grid; }
+    .drawer__meta a, .drawer__meta li > span {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 44px;
+        font-size: .9375rem;
+        color: var(--on-night-muted);
+        text-decoration: none;
+        overflow-wrap: anywhere;
+    }
+
+    /* ---------------------------------------------------- alt sekme barı */
+
+    .tabbar {
+        position: fixed;
+        left: 0; right: 0; bottom: 0;
+        z-index: 60;
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: minmax(0, 1fr);
+        padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        background: var(--surface);
+        border-top: 1px solid var(--line);
+    }
+    .tabbar a {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        min-height: var(--tab-h);
+        padding: 0 2px;
+        font-size: .6875rem;
+        font-weight: 500;
+        letter-spacing: .01em;
+        color: var(--text-muted);
+        text-decoration: none;
+        white-space: nowrap;
+    }
+    .tabbar a span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+    .tabbar a[aria-current="page"] { color: var(--signal); }
+    .tabbar a[aria-current="page"]::before {
+        content: "";
+        position: absolute;
+        top: -1px; left: 26%; right: 26%;
+        height: 2px;
+        background: var(--signal);
+        pointer-events: none;
+    }
+    .tabbar__wa { color: var(--text) !important; }
+    body.drawer-open .tabbar { visibility: hidden; }
+
+    /* ------------------------------------------------------- tipografi */
+
+    .h1 { font-size: clamp(2.5rem, 11.5vw, 3.75rem); letter-spacing: -.045em; }
+    .h2 { font-size: clamp(2rem, 8.6vw, 2.75rem); }
+    .lead { font-size: 1.125rem; }
+
+    .sec { padding-block: 76px; }
+    .sec--tight { padding-block: 56px; }
+    .sec__head {
+        grid-template-columns: 1fr;
+        gap: 16px;
+        margin-bottom: 40px;
+        padding-top: 18px;
+    }
+    .sec__more { grid-column: 1; grid-row: auto; justify-self: start; }
+
+    .btns { flex-direction: column; align-items: stretch; }
+    .btns .btn { width: 100%; }
+    .btn { min-height: 52px; }
+
+    /* ------------------------------------------------------------ hero */
+
+    .hero {
+        padding-top: calc(var(--hdr-h) + env(safe-area-inset-top) + 44px);
+        padding-bottom: 48px;
+    }
+    .hero__grid {
+        grid-template-columns: 1fr;
+        grid-template-areas: "copy" "fig" "proof";
+    }
+    .hero__name {
+        margin-top: 22px;
+        font-size: clamp(3.25rem, 16.5vw, 5.5rem);
+        line-height: .9;
+    }
+    .hero__tagline { font-size: clamp(1.375rem, 6.4vw, 1.75rem); max-width: 20ch; }
+    .hero__sub { font-size: 1rem; }
+    .hero__cta { margin-top: 30px; }
+    .hero__fig { margin-top: 44px; }
+    .hero .proof {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0 20px;
+        margin-top: 40px;
+    }
+    .proof__item { padding: 18px 0 20px; border-bottom: 1px solid var(--night-line); }
+    .proof__item dd { font-size: 2.25rem; }
+
+    .figure__cap { flex-direction: column; gap: 4px; }
+
+    /* --------------------------------------------------- marka satırı */
+
+    .clients { padding-block: 26px; }
+    .clients__inner { grid-template-columns: 1fr; gap: 14px; }
+    /* Mobilde ayraçsız iki kolon: satır başı/sonu ayracı sorunu hiç oluşmaz. */
+    .clients__list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px 20px;
+        margin-left: 0;
+        clip-path: none;
+    }
+    .clients__list li { font-size: 1rem; }
+    .clients__list li::before { content: none; }
+
+    /* ------------------------------------------------------ işler */
+
+    .works, .refgrid { grid-template-columns: 1fr; gap: 52px; }
+    .works > .work:nth-child(even) { margin-top: 0; }
+    .work__title, .refgrid .work__title { font-size: 1.5rem; }
+    /* Kartın tamamı zaten tıklanır (stretched link); başlık bağlantısının kendisi de 44px. */
+    .work__title a { display: inline-block; padding-block: 9px; margin-block: -9px; }
+    .cover-ph__name, .refgrid .cover-ph__name { font-size: clamp(1.75rem, 8.5vw, 2.5rem); }
+    .case__cover .cover-ph__name { font-size: clamp(2.25rem, 11vw, 3.25rem); }
+    .work__media img { filter: grayscale(.15); }
+
+    /* ---------------------------------------------- ne yapıyorum + duo */
+
+    .xgrid { grid-template-columns: 1fr; }
+    .xcell { min-height: 0; padding: 26px 22px; }
+    .xcell__title { padding-top: 28px; }
+
+    .duo { grid-template-columns: 1fr; }
+    .duo__card { padding: 30px 22px; }
+    .duo__card + .duo__card { border-left: 0; border-top: 1px solid var(--line-strong); }
+    .duo__title { font-size: 2rem; }
+
+    /* ------------------------------------------------- zaman çizgisi */
+    /* Dikey akış: solda tek ince çizgi, her adımda kare işaret. */
+
+    .tline {
+        grid-template-columns: 1fr;
+        border-top: 0;
+        border-left: 1px solid var(--night-line);
+        margin-left: 3px;
+    }
+    .tline__item { padding: 0 0 36px 26px; }
+    .tline__item:last-child { padding-bottom: 0; }
+    .tline__item::before { top: 6px; left: -4px; }
+    .tline__title { margin-top: 8px; }
+
+    /* ------------------------------------------------------- SSS, CTA */
+
+    .split2 { grid-template-columns: 1fr; gap: 32px; }
+    .faq summary { font-size: 1.0625rem; padding: 18px 0; }
+
+    .cta__inner { grid-template-columns: 1fr; gap: 32px; }
+    .cta__title { font-size: clamp(3rem, 15vw, 4.5rem); }
+    .cta__lines a { min-height: 44px; }
+
+    /* ------------------------------------------------- sayfa başlıkları */
+
+    .phead { padding-top: 28px; padding-bottom: 48px; }
+    .phead .crumbs + .label { margin-top: 28px; }
+    .crumbs a { min-height: 44px; }
+    .phead__lead { margin-top: 20px; }
+
+    /* ----------------------------------------------------- hakkında */
+
+    .editorial { grid-template-columns: 1fr; gap: 40px; }
+    .editorial__media { position: static; max-width: 520px; }
+    .pullquote { padding-left: 20px; }
+    .pullquote p { font-size: 1.75rem; }
+    .facts > div { grid-template-columns: 1fr; gap: 4px; padding: 14px 0; }
+    .gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 28px 14px; }
+    .gallery .frame { padding: 6px; }
+    .gallery .figure__cap { flex-direction: row; align-items: baseline; padding-top: 10px; font-size: 0.6875rem; }
+
+    /* --------------------------------------------------- referanslar */
+
+    .filter {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        margin-inline: calc(var(--gutter) * -1);
+        padding: 0 var(--gutter) 4px;
+        scrollbar-width: none;
+    }
+    .filter::-webkit-scrollbar { display: none; }
+    .filter a { flex: none; }
+
+    .case__grid { grid-template-columns: 1fr; gap: 40px; }
+    .case__aside { position: static; }
+    .case__cover .work__media { aspect-ratio: 4 / 3; }
+    .case__meta { gap: 8px 16px; }
+
+    .pager { grid-template-columns: 1fr; }
+    .pager__cell { min-height: 96px; }
+    .pager__cell--next { text-align: left; align-items: flex-start; }
+    .pager__cell--all {
+        order: 3;
+        align-items: flex-start;
+        padding-inline: 0;
+        border-inline: 0;
+        border-top: 1px solid var(--line);
+    }
+    .pager__cell + .pager__cell { border-top: 1px solid var(--line); }
+
+    /* ------------------------------------------------------ iletişim */
+
+    .ccards { grid-template-columns: 1fr; }
+    .ccard { min-height: 0; padding: 22px; }
+    .ccard__label { margin-top: 18px; }
+    .ccard .link-arrow { min-height: 44px; }
+
+    .contact-grid { grid-template-columns: 1fr; gap: 40px; }
+    .form { padding: 24px 20px; margin-inline: calc(var(--gutter) * -1 + 8px); }
+    .form__row { grid-template-columns: 1fr; }
+    .field input, .field textarea { font-size: 16px; } /* iOS yakınlaştırmasın */
+    .aside-list li { grid-template-columns: 1fr; gap: 4px; }
+    .aside-list a { display: inline-flex; align-items: center; min-height: 44px; overflow-wrap: anywhere; }
+
+    /* -------------------------------------------------------- footer */
+
+    .ftr {
+        padding-top: 56px;
+        padding-bottom: calc(20px + var(--tab-h) + env(safe-area-inset-bottom));
+    }
+    .ftr__statement { font-size: clamp(1.5rem, 7vw, 1.875rem); }
+    .ftr__grid { grid-template-columns: 1fr 1fr; gap: 36px 20px; }
+    .ftr__brand { grid-column: 1 / -1; }
+    .ftr__col ul a, .ftr__col ul span { min-height: 44px; }
+    .ftr__bar { flex-direction: column; }
+    .ftr__admin a { min-height: 44px; }
+}
+
+/* ---------------------------------------------- 600–860px: iki kolonlu ızgaralar */
+
+@media (min-width: 600px) and (max-width: 860px) {
+    .refgrid, .works { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 48px 24px; }
+    .xgrid, .ccards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .hero .proof { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .ftr__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ------------------------------------------------------- çok dar (≤380px) */
+
+@media (max-width: 380px) {
+    :root { --gutter: 16px; }
+    .brand--m .brand__word { display: none; }
+    .hero__name { font-size: 3.1rem; }
+    .ftr__grid { grid-template-columns: 1fr; }
+    .tabbar a { font-size: .625rem; }
+}
+
+/* --------------------------------------------------- yatay telefon */
+
+@media (max-width: 860px) and (orientation: landscape) and (max-height: 500px) {
+    :root { --tab-h: 52px; }
+    .tabbar a { flex-direction: row; gap: 6px; }
+    .hero__name { font-size: 3.5rem; }
+    .hero__fig { max-width: 360px; }
+    .drawer__nav a { min-height: 56px; }
+    .drawer__text { font-size: 1.375rem; }
+}

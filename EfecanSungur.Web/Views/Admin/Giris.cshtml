@@ -1,0 +1,86 @@
+@model LoginModel
+@inject IContentService ContentService
+@{
+    Layout = null;
+    var site = ContentService.Get();
+    var s = site.Settings;
+    var t = site.Theme;
+    var errors = ViewData.ModelState[""]?.Errors;
+}
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Giriş · @s.SiteName Yönetim</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <meta name="theme-color" content="@t.Night" />
+    <link rel="icon" href="/img/logo/favicon.svg" type="image/svg+xml" />
+    @await Html.PartialAsync("_AdminTheme", t)
+    <link rel="stylesheet" href="~/css/admin.css" asp-append-version="true" />
+</head>
+<body class="adm">
+
+<div class="login">
+    <aside class="login__aside">
+        <span class="login__mark" aria-hidden="true">@s.LogoLetterOne@s.LogoLetterTwo</span>
+        <span class="login__badge">Yönetim Paneli</span>
+        <div>
+            <h1>Sitenin tamamı, tek bir yerden.</h1>
+            <p>
+                Metinler, görseller, renkler, menü, iletişim bilgileri ve gelen mesajlar —
+                hepsi bu panelden düzenlenebilir, eklenebilir ve silinebilir.
+            </p>
+        </div>
+        <div class="login__foot">
+            <a href="/">← @s.SiteName sitesine dön</a>
+        </div>
+    </aside>
+
+    <div class="login__main">
+        <div class="login__card">
+            <div class="login__logo">@s.LogoLetterOne@s.LogoLetterTwo</div>
+            <h2>Giriş yap</h2>
+            <p>Devam etmek için yönetici bilgilerinizi girin.</p>
+
+            @if (errors is { Count: > 0 })
+            {
+                <div class="login__err" role="alert">
+                    @Icons.Svg("info", "icon", 18)
+                    <span>@errors.First().ErrorMessage</span>
+                </div>
+            }
+
+            <form method="post" action="/admin/giris">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="returnUrl" value="@ViewData["ReturnUrl"]" />
+
+                <div class="f">
+                    <label for="Username">Kullanıcı adı</label>
+                    <input type="text" id="Username" name="Username" value="@Model.Username"
+                           autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus />
+                </div>
+
+                <div class="f">
+                    <label for="Password">Şifre</label>
+                    <div class="pwwrap">
+                        <input type="password" id="Password" name="Password" autocomplete="current-password" required />
+                        <button type="button" class="pweye" aria-label="Şifreyi göster">@Icons.Svg("eye", "icon", 18)</button>
+                    </div>
+                </div>
+
+                <button class="b b--primary b--block" type="submit" style="margin-top:6px">
+                    @Icons.Svg("logout", "icon", 18) <span>Panele gir</span>
+                </button>
+            </form>
+
+            <p class="hint" style="margin-top:22px">
+                Oturum 12 saat açık kalır. Ortak bir bilgisayarda işiniz bittiğinde çıkış yapmayı unutmayın.
+            </p>
+        </div>
+    </div>
+</div>
+
+<script src="~/js/admin.js" asp-append-version="true"></script>
+</body>
+</html>
